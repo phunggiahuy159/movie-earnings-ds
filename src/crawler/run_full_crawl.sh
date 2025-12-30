@@ -48,9 +48,10 @@ echo -e "${NC}"
 
 # Estimate crawl info
 if [ -z "$LIMIT" ]; then
-    echo -e "${YELLOW}Mode: MAXIMUM CRAWL (up to 10,000 movies)${NC}"
-    echo -e "${YELLOW}Estimated Time: 3-4 hours${NC}"
-    echo -e "${YELLOW}Estimated Size: ~50-100 MB CSV file${NC}"
+    echo -e "${YELLOW}Mode: MAXIMUM CRAWL (up to 50,000 movies)${NC}"
+    echo -e "${YELLOW}Estimated Time: 8-12 hours${NC}"
+    echo -e "${YELLOW}Estimated Size: 200-300 MB CSV file${NC}"
+    echo -e "${YELLOW}CSV updates in REAL-TIME - you can stop anytime with Ctrl+C${NC}"
     LIMIT_ARG=""
 else
     echo -e "${YELLOW}Mode: LIMITED CRAWL ($LIMIT movies)${NC}"
@@ -62,22 +63,22 @@ else
         TIME_EST="~$TIME_MINS minutes"
     fi
     echo -e "${YELLOW}Estimated Time: $TIME_EST${NC}"
+    echo -e "${YELLOW}CSV updates in REAL-TIME - you can stop anytime with Ctrl+C${NC}"
     LIMIT_ARG="-a limit=$LIMIT"
 fi
 
 echo ""
 echo -e "${BLUE}Starting crawl...${NC}"
 echo "Output will be saved to: /workspace/movie-earnings-ds/dataset/data_joined.csv"
+echo "Watch progress: tail -f /workspace/movie-earnings-ds/dataset/data.csv"
 echo ""
 
 # Clean up old output
 rm -f /workspace/movie-earnings-ds/dataset/data.csv
 rm -f /workspace/movie-earnings-ds/dataset/data_joined.csv
 
-# Run the spider
-scrapy crawl full2ImdbCrawler \
-    -o /workspace/movie-earnings-ds/dataset/data.csv \
-    $LIMIT_ARG
+# Run the spider (output path configured in settings.py)
+scrapy crawl full2ImdbCrawler $LIMIT_ARG
 
 # Create backup/copy
 if [ -f "/workspace/movie-earnings-ds/dataset/data.csv" ]; then

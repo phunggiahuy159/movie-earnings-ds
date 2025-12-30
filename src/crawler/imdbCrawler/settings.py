@@ -19,6 +19,22 @@ FEED_EXPORT_FIELDS = ['Movie_ID', 'Movie_Title', 'Budget', 'Cast', 'Crew', 'Stud
                       'Release_Data', 'Runtime', 'Gross_worldwide', 'Rating', 
                       'Rating_Count', 'ListOfCertificate']
 
+# Configure feeds for output
+FEEDS = {
+    '/workspace/movie-earnings-ds/dataset/data.csv': {
+        'format': 'csv',
+        'encoding': 'utf-8',
+        'store_empty': False,
+        'fields': ['Movie_ID', 'Movie_Title', 'Budget', 'Cast', 'Crew', 'Studios', 
+                   'Genre', 'Keywords', 'Languages', 'Countries', 'Filming_Location',
+                   'Release_Data', 'Runtime', 'Gross_worldwide', 'Rating', 
+                   'Rating_Count', 'ListOfCertificate'],
+        'item_export_kwargs': {
+            'export_empty_fields': True,
+        },
+    },
+}
+
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 #USER_AGENT = 'crawler (+http://www.yourdomain.com)'
@@ -27,12 +43,12 @@ FEED_EXPORT_FIELDS = ['Movie_ID', 'Movie_Title', 'Budget', 'Cast', 'Crew', 'Stud
 ROBOTSTXT_OBEY = True
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
-#CONCURRENT_REQUESTS = 32
+CONCURRENT_REQUESTS = 8
 
 # Configure a delay for requests for the same website (default: 0)
 # See https://docs.scrapy.org/en/latest/topics/settings.html#download-delay
 # See also autothrottle settings and docs
-#DOWNLOAD_DELAY = 3
+DOWNLOAD_DELAY = 0.5
 # The download delay setting will honor only one of:
 #CONCURRENT_REQUESTS_PER_DOMAIN = 16
 #CONCURRENT_REQUESTS_PER_IP = 16
@@ -86,6 +102,11 @@ ITEM_PIPELINES = {
 # Enable showing throttling stats for every response received:
 #AUTOTHROTTLE_DEBUG = False
 
+# Use depth-first crawling to process detail pages before moving to next listing page
+DEPTH_PRIORITY = 1
+SCHEDULER_DISK_QUEUE = 'scrapy.squeues.PickleFifoDiskQueue'
+SCHEDULER_MEMORY_QUEUE = 'scrapy.squeues.FifoMemoryQueue'
+
 # Enable and configure HTTP caching (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html#httpcache-middleware-settings
 #HTTPCACHE_ENABLED = True
@@ -93,3 +114,19 @@ ITEM_PIPELINES = {
 #HTTPCACHE_DIR = 'httpcache'
 #HTTPCACHE_IGNORE_HTTP_CODES = []
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
+
+# Playwright settings for JavaScript rendering
+DOWNLOAD_HANDLERS = {
+    "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+    "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+}
+
+TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
+
+PLAYWRIGHT_BROWSER_TYPE = "chromium"
+PLAYWRIGHT_LAUNCH_OPTIONS = {
+    "headless": True,
+}
+
+# Increase timeout for Playwright requests
+PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT = 60000
