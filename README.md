@@ -169,15 +169,38 @@ python src/gradio_app.py
 
 ## 🕷️ Crawling More Data (Optional)
 
-To collect additional movies from IMDb:
+### Crawler Setup (First Time Only)
+
+The crawler uses Playwright for JavaScript rendering. Install the browser:
+
+```bash
+# Install Playwright browser binaries
+playwright install chromium
+
+# Install system dependencies (Linux only)
+playwright install-deps
+```
+
+### Running the Crawler
 
 ```bash
 cd src/crawler
-bash run_full_crawl.sh 100  # Crawl 100 movies
+bash run_full_crawl.sh 100   # Crawl 100 movies
+bash run_full_crawl.sh 500   # Crawl 500 movies
+bash run_full_crawl.sh 1000  # Crawl 1000 movies
 ```
+
+**Time estimates:**
+| Movies | Time       |
+|--------|------------|
+| 100    | ~2 min     |
+| 500    | ~10 min    |
+| 1000   | ~20 min    |
+| 5000   | ~1-2 hours |
 
 The crawler will:
 - Scrape IMDb's most popular movies (sorted by vote count)
+- Use Playwright to handle JavaScript pagination ("50 more" button)
 - Extract 17 fields per movie
 - Save to `dataset/data_joined.csv`
 
@@ -229,6 +252,8 @@ Typical results on 26-movie dataset:
 - seaborn >= 0.12.0
 - gradio >= 4.0.0
 - scrapy >= 2.11.0 (for crawler)
+- scrapy-playwright >= 0.0.40 (for crawler)
+- playwright >= 1.40.0 (for crawler)
 
 ### System Requirements
 - Python 3.11
