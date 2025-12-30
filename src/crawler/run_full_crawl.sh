@@ -27,11 +27,11 @@ NC='\033[0m' # No Color
 LIMIT=${1:-""}
 
 # Activate conda environment
-echo -e "${BLUE}Activating conda environment 'ds'...${NC}"
-source /workspace/miniconda3/bin/activate ds
+echo -e "${BLUE}Activating conda environment 'movie'...${NC}"
+source /workspace/miniconda3/bin/activate movie
 
 # Change to crawler directory
-cd /workspace/bor-prediction-analysis/src/crawler
+cd /workspace/movie-earnings-ds/src/crawler
 
 # Display banner
 echo -e "${GREEN}"
@@ -67,22 +67,22 @@ fi
 
 echo ""
 echo -e "${BLUE}Starting crawl...${NC}"
-echo "Output will be saved to: /workspace/bor-prediction-analysis/dataset/data_joined.csv"
+echo "Output will be saved to: /workspace/movie-earnings-ds/dataset/data_joined.csv"
 echo ""
 
 # Clean up old output
-rm -f /workspace/bor-prediction-analysis/dataset/data.csv
-rm -f /workspace/bor-prediction-analysis/dataset/data_joined.csv
+rm -f /workspace/movie-earnings-ds/dataset/data.csv
+rm -f /workspace/movie-earnings-ds/dataset/data_joined.csv
 
 # Run the spider
 scrapy crawl full2ImdbCrawler \
-    -o /workspace/bor-prediction-analysis/dataset/data.csv \
+    -o /workspace/movie-earnings-ds/dataset/data.csv \
     $LIMIT_ARG
 
 # Create backup/copy
-if [ -f "/workspace/bor-prediction-analysis/dataset/data.csv" ]; then
-    cp /workspace/bor-prediction-analysis/dataset/data.csv \
-       /workspace/bor-prediction-analysis/dataset/data_joined.csv
+if [ -f "/workspace/movie-earnings-ds/dataset/data.csv" ]; then
+    cp /workspace/movie-earnings-ds/dataset/data.csv \
+       /workspace/movie-earnings-ds/dataset/data_joined.csv
     
     echo ""
     echo -e "${GREEN}╔═══════════════════════════════════════╗${NC}"
@@ -90,13 +90,13 @@ if [ -f "/workspace/bor-prediction-analysis/dataset/data.csv" ]; then
     echo -e "${GREEN}╚═══════════════════════════════════════╝${NC}"
     echo ""
     echo "Output files:"
-    echo "  • /workspace/bor-prediction-analysis/dataset/data.csv"
-    echo "  • /workspace/bor-prediction-analysis/dataset/data_joined.csv"
+    echo "  • /workspace/movie-earnings-ds/dataset/data.csv"
+    echo "  • /workspace/movie-earnings-ds/dataset/data_joined.csv"
     echo ""
     
     # Show statistics
-    TOTAL_ROWS=$(($(wc -l < /workspace/bor-prediction-analysis/dataset/data.csv) - 1))
-    FILE_SIZE=$(du -h /workspace/bor-prediction-analysis/dataset/data.csv | cut -f1)
+    TOTAL_ROWS=$(($(wc -l < /workspace/movie-earnings-ds/dataset/data.csv) - 1))
+    FILE_SIZE=$(du -h /workspace/movie-earnings-ds/dataset/data.csv | cut -f1)
     
     echo -e "${BLUE}Statistics:${NC}"
     echo "  • Total movies: $TOTAL_ROWS"
@@ -105,7 +105,7 @@ if [ -f "/workspace/bor-prediction-analysis/dataset/data.csv" ]; then
     echo ""
     
     echo -e "${BLUE}Sample data (first movie):${NC}"
-    head -n 2 /workspace/bor-prediction-analysis/dataset/data.csv | tail -n 1 | cut -c1-100
+    head -n 2 /workspace/movie-earnings-ds/dataset/data.csv | tail -n 1 | cut -c1-100
     echo "..."
     echo ""
     
