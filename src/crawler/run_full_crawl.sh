@@ -48,22 +48,23 @@ echo -e "${NC}"
 
 # Estimate crawl info
 if [ -z "$LIMIT" ]; then
-    echo -e "${YELLOW}Mode: MAXIMUM CRAWL (up to 50,000 movies)${NC}"
-    echo -e "${YELLOW}Estimated Time: 8-12 hours${NC}"
-    echo -e "${YELLOW}Estimated Size: 200-300 MB CSV file${NC}"
-    echo -e "${YELLOW}CSV updates in REAL-TIME - you can stop anytime with Ctrl+C${NC}"
+    echo -e "${YELLOW}Mode: UNLIMITED CRAWL (all available movies)${NC}"
+    echo -e "${YELLOW}Crawls from 9 different year ranges for maximum coverage${NC}"
+    echo -e "${YELLOW}Expected: 50,000+ movies${NC}"
+    echo -e "${YELLOW}CSV updates in REAL-TIME - stop anytime with Ctrl+C${NC}"
     LIMIT_ARG=""
 else
     echo -e "${YELLOW}Mode: LIMITED CRAWL ($LIMIT movies)${NC}"
-    # Calculate estimated time (~ 0.5 sec per movie)
-    TIME_MINS=$((LIMIT / 120))
+    echo -e "${YELLOW}Crawls from 9 different year ranges for maximum coverage${NC}"
+    # Calculate estimated time (~ 2 sec per movie)
+    TIME_MINS=$((LIMIT / 30))
     if [ $TIME_MINS -lt 1 ]; then
         TIME_EST="< 1 minute"
     else
         TIME_EST="~$TIME_MINS minutes"
     fi
     echo -e "${YELLOW}Estimated Time: $TIME_EST${NC}"
-    echo -e "${YELLOW}CSV updates in REAL-TIME - you can stop anytime with Ctrl+C${NC}"
+    echo -e "${YELLOW}CSV updates in REAL-TIME - stop anytime with Ctrl+C${NC}"
     LIMIT_ARG="-a limit=$LIMIT"
 fi
 

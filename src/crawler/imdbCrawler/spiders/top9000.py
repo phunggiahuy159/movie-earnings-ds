@@ -15,35 +15,50 @@ from urllib.parse import unquote
 
 class IMDBCrawler(scrapy.Spider):
     name = "full2ImdbCrawler"
-    # Updated to crawl top-rated movies from all time - sorted by number of votes (most popular movies)
+    # Multiple start URLs to maximize movie coverage - each year range gives ~10,000 results
+    # This bypasses the "Load more" button limitation by starting fresh searches
     start_urls = [
-        'https://www.imdb.com/search/title/?title_type=feature&num_votes=1000,&sort=num_votes,desc']
+        # By year ranges (each covers ~10k movies with votes)
+        'https://www.imdb.com/search/title/?title_type=feature&release_date=2020-01-01,2025-12-31&num_votes=100,&sort=num_votes,desc',
+        'https://www.imdb.com/search/title/?title_type=feature&release_date=2015-01-01,2019-12-31&num_votes=100,&sort=num_votes,desc',
+        'https://www.imdb.com/search/title/?title_type=feature&release_date=2010-01-01,2014-12-31&num_votes=100,&sort=num_votes,desc',
+        'https://www.imdb.com/search/title/?title_type=feature&release_date=2005-01-01,2009-12-31&num_votes=100,&sort=num_votes,desc',
+        'https://www.imdb.com/search/title/?title_type=feature&release_date=2000-01-01,2004-12-31&num_votes=100,&sort=num_votes,desc',
+        'https://www.imdb.com/search/title/?title_type=feature&release_date=1990-01-01,1999-12-31&num_votes=100,&sort=num_votes,desc',
+        'https://www.imdb.com/search/title/?title_type=feature&release_date=1980-01-01,1989-12-31&num_votes=100,&sort=num_votes,desc',
+        'https://www.imdb.com/search/title/?title_type=feature&release_date=1970-01-01,1979-12-31&num_votes=100,&sort=num_votes,desc',
+        'https://www.imdb.com/search/title/?title_type=feature&release_date=,1969-12-31&num_votes=100,&sort=num_votes,desc',
+    ]
     user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
     parseUrl = 'https://www.imdb.com'
     custom_settings = {
         'ROBOTSTXT_OBEY': True,
-        'DOWNLOAD_DELAY': 0.2,
+        'DOWNLOAD_DELAY': 0.3,
         'CONCURRENT_REQUESTS': 16,
         'CONCURRENT_REQUESTS_PER_DOMAIN': 8,
         'AUTOTHROTTLE_ENABLED': True,
-        'AUTOTHROTTLE_START_DELAY': 0.1,
-        'AUTOTHROTTLE_MAX_DELAY': 1,
+        'AUTOTHROTTLE_START_DELAY': 0.2,
+        'AUTOTHROTTLE_MAX_DELAY': 2,
     }
 
     def __init__(self, *args, **kwargs):
         super(IMDBCrawler, self).__init__(*args, **kwargs)
-        self.limit = int(kwargs.get('limit', 50000))
+        # No limit by default - crawl ALL available movies
+        # Pass -a limit=5000 to set a specific limit
+        self.limit = int(kwargs.get('limit', 0)) or float('inf')
         self.scraped_count = 0
         self.queued_count = 0
         self.seen_urls = set()
         self.page_num = 0
+        self.current_url_index = 0
 
     def start_requests(self):
-        """Use Playwright for the initial search page to render JavaScript"""
-        for url in self.start_urls:
+        """Use Playwright for the initial search page to render JavaScript - process one URL at a time"""
+        # Start with first URL only - others will be queued after this one's pagination completes
+        if self.start_urls:
             yield scrapy.Request(
-                url,
+                self.start_urls[0],
                 callback=self.parse,
                 meta={
                     "playwright": True,
@@ -52,6 +67,7 @@ class IMDBCrawler(scrapy.Spider):
                         PageMethod("wait_for_load_state", "domcontentloaded"),
                         PageMethod("wait_for_timeout", 3000),  # Wait 3 seconds for page to fully load
                     ],
+                    "url_index": 0,
                 },
                 errback=self.errback_close_page,
             )
@@ -163,15 +179,57 @@ class IMDBCrawler(scrapy.Spider):
             import traceback
             self.logger.error(traceback.format_exc())
         finally:
-            if page and self.queued_count >= self.limit:
+            if page:
                 await page.close()
 
+            # Move to next start URL if we haven't hit the limit
+            url_index = response.meta.get("url_index", 0)
+            next_index = url_index + 1
+            if next_index < len(self.start_urls) and self.queued_count < self.limit:
+                self.logger.info(f"Moving to next start URL ({next_index + 1}/{len(self.start_urls)})")
+                self.page_num = 0  # Reset page counter for new URL
+                yield scrapy.Request(
+                    self.start_urls[next_index],
+                    callback=self.parse,
+                    meta={
+                        "playwright": True,
+                        "playwright_include_page": True,
+                        "playwright_page_methods": [
+                            PageMethod("wait_for_load_state", "domcontentloaded"),
+                            PageMethod("wait_for_timeout", 3000),
+                        ],
+                        "url_index": next_index,
+                    },
+                    errback=self.errback_close_page,
+                )
+
     async def errback_close_page(self, failure):
-        """Handle errors and close Playwright page"""
+        """Handle errors and close Playwright page, then try next URL"""
         page = failure.request.meta.get("playwright_page")
         if page:
             await page.close()
         self.logger.error(f"Request failed: {failure.request.url}")
+
+        # Try next start URL on failure
+        url_index = failure.request.meta.get("url_index", 0)
+        next_index = url_index + 1
+        if next_index < len(self.start_urls) and self.queued_count < self.limit:
+            self.logger.info(f"Trying next start URL after failure ({next_index + 1}/{len(self.start_urls)})")
+            self.page_num = 0
+            yield scrapy.Request(
+                self.start_urls[next_index],
+                callback=self.parse,
+                meta={
+                    "playwright": True,
+                    "playwright_include_page": True,
+                    "playwright_page_methods": [
+                        PageMethod("wait_for_load_state", "domcontentloaded"),
+                        PageMethod("wait_for_timeout", 3000),
+                    ],
+                    "url_index": next_index,
+                },
+                errback=self.errback_close_page,
+            )
 
     def parseAMovie(self, response):
         try:

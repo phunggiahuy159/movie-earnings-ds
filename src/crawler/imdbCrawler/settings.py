@@ -19,21 +19,8 @@ FEED_EXPORT_FIELDS = ['Movie_ID', 'Movie_Title', 'Budget', 'Cast', 'Crew', 'Stud
                       'Release_Data', 'Runtime', 'Gross_worldwide', 'Rating', 
                       'Rating_Count', 'ListOfCertificate']
 
-# Configure feeds for output
-FEEDS = {
-    '/workspace/movie-earnings-ds/dataset/data.csv': {
-        'format': 'csv',
-        'encoding': 'utf-8',
-        'store_empty': False,
-        'fields': ['Movie_ID', 'Movie_Title', 'Budget', 'Cast', 'Crew', 'Studios', 
-                   'Genre', 'Keywords', 'Languages', 'Countries', 'Filming_Location',
-                   'Release_Data', 'Runtime', 'Gross_worldwide', 'Rating', 
-                   'Rating_Count', 'ListOfCertificate'],
-        'item_export_kwargs': {
-            'export_empty_fields': True,
-        },
-    },
-}
+# Disabled default FEEDS - using RealtimeCsvPipeline instead for real-time updates
+# FEEDS = {}
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
@@ -83,10 +70,10 @@ DOWNLOAD_DELAY = 0.5
 #    'scrapy.extensions.telnet.TelnetConsole': None,
 #}
 
-# Configure item pipelines
+# Configure item pipelines - using RealtimeCsvPipeline for instant CSV updates
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-   'imdbCrawler.pipelines.ImdbcrawlerPipeline': 300,
+   'imdbCrawler.pipelines.RealtimeCsvPipeline': 300,
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)
