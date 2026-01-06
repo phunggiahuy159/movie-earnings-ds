@@ -1,112 +1,343 @@
 """
-Comprehensive Gradio Demo for Box Office Prediction
-Showcases: EDA, Statistics, 7 Models, Feature Engineering
+Box Office Prediction - Interactive Demo
+Course: IT4142E - Introduction to Data Science
+Enhanced UI with Interactive Visualizations and Better Contrast
 """
 
 import gradio as gr
 import pandas as pd
 import numpy as np
 import pickle
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+import plotly.express as px
+from plotly.subplots import make_subplots
 from pathlib import Path
 from PIL import Image
 
 # Helper functions
 def load_pickle(path):
     """Load pickle file safely"""
-    return pickle.load(open(path, 'rb')) if Path(path).exists() else None
+    try:
+        return pickle.load(open(path, 'rb')) if Path(path).exists() else None
+    except Exception as e:
+        print(f"Error loading {path}: {e}")
+        return None
 
 def load_csv(path):
     """Load CSV safely"""
-    return pd.read_csv(path) if Path(path).exists() else None
-
-def load_html(path):
-    """Load HTML file"""
-    return open(path, 'r', encoding='utf-8').read() if Path(path).exists() else "<p>File not found</p>"
+    try:
+        return pd.read_csv(path) if Path(path).exists() else None
+    except Exception as e:
+        print(f"Error loading {path}: {e}")
+        return None
 
 def load_image(path):
     """Load image safely"""
-    return Image.open(path) if Path(path).exists() else None
+    try:
+        return Image.open(path) if Path(path).exists() else None
+    except Exception as e:
+        print(f"Error loading image {path}: {e}")
+        return None
+
 
 class BoxOfficeDemo:
     def __init__(self):
-        print("Loading resources...")
+        print("📊 Loading resources...")
         self.model = load_pickle('models/box_office_model.pkl')
         self.df = load_csv('dataset/data_cleaned.csv')
         self.comparison = load_csv('demo/model_comparison.csv')
         self.stats = load_csv('demo/stats_summary.csv')
         self.vif = load_csv('demo/vif_report.csv')
-        print(f"✓ Loaded: {len(self.df) if self.df is not None else 0} movies, {len(self.model['feature_names']) if self.model else 0} features")
+        
+        if self.df is not None and self.model is not None:
+            print(f"✓ Loaded: {len(self.df)} movies, {len(self.model['feature_names'])} features")
+        else:
+            print("⚠️ Warning: Some resources failed to load")
     
     # Tab 1: Overview
     def overview_tab(self):
-        """Project overview with key metrics"""
-        metrics = f"""
-# 🎬 Movie Box Office Prediction
-**Advanced ML System with Comprehensive Feature Engineering**
+        """Project overview - clean and simple"""
+        if self.df is None or self.model is None or self.comparison is None:
+            return "⚠️ Error: Required data not loaded. Please run `python main.py` first."
+        
+        overview_text = f"""
+## 📊 Project Overview
 
-## 🎯 Project Goals
-Predict worldwide box office gross using 19,000 movies dataset, demonstrating:
-- Data Science Process (Collection → Cleaning → EDA → Modeling → Evaluation)
-- Advanced Feature Engineering (52 new features created)
-- Model Comparison (7 ML algorithms)
-- Statistical Analysis & Visualization
+**Course:** IT4142E - Introduction to Data Science  
+**Objective:** Predict worldwide box office gross revenue using machine learning
 
-## 📊 Key Results
-- **Dataset:** {len(self.df):,} movies ({self.df['Release_Year'].min():.0f}-{self.df['Release_Year'].max():.0f})
-- **Features:** {len(self.model['feature_names'])} engineered features
-- **Best Model:** {self.model.get('model_name', 'Random_Forest')}
-- **Performance:** R² = {self.comparison.iloc[0]['Test_R2']:.4f}, MAE = ${self.comparison.iloc[0]['Test_MAE']:,.0f}
-- **Models Compared:** 7 algorithms (Linear, Ridge, Lasso, ElasticNet, Tree, Forest, Boosting)
+### Key Metrics
 
-## 📚 Course Topics Demonstrated
-✅ Data Collection & Cleaning  
-✅ EDA & Visualization (25+ plots)  
-✅ Statistical Analysis (Correlation, VIF, Normality)  
-✅ Feature Engineering (Temporal, Star Power, Studio, etc.)  
-✅ Model Comparison & Cross-Validation  
-✅ Evaluation Metrics (R², MAE, RMSE, Learning Curves)  
+| Metric | Value |
+|--------|-------|
+| 📁 Total Movies | **{len(self.df):,}** |
+| 🔧 Features Engineered | **{len(self.model['feature_names'])}** |
+| 🏆 Best Model | **{self.model.get('model_name', 'Random Forest')}** |
+| 📈 Test R² Score | **{self.comparison.iloc[0]['Test_R2']:.4f}** |
+| 📉 Test MAE | **${self.comparison.iloc[0]['Test_MAE']/1e6:.1f}M** |
+| 📅 Time Period | {self.df['Release_Year'].min():.0f} - {self.df['Release_Year'].max():.0f} |
+
+### 📚 Data Science Pipeline
+
+<div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid #3b82f6;">
+<pre style="font-size: 16px; line-height: 1.8; margin: 0; font-family: 'Courier New', monospace;">
+<b>Data Collection</b> → <b>Data Cleaning</b> → <b>EDA</b> → <b>Feature Engineering</b> → <b>Model Training</b> → <b>Evaluation</b>
+   (Scrapy)         (Pipeline)      (25+ viz)      (52 features)         (7 models)        (Metrics)
+</pre>
+</div>
+
+### 🎯 Models Compared
+Linear Regression • Ridge • Lasso • ElasticNet • Decision Tree • Random Forest • Gradient Boosting
 
 ---
-**Navigate tabs above to explore each component**
+**Navigate the tabs above to explore each component in detail**
 """
-        return metrics
+        return overview_text
     
     # Tab 2: Data Quality
     def quality_tab(self):
-        """Embed data quality HTML report"""
-        html = load_html('demo/data_quality_report.html')
-        return f'<iframe srcdoc="{html}" width="100%" height="800px"></iframe>'
+        """Display data quality metrics with visual charts"""
+        if self.df is None:
+            return "⚠️ Data not loaded", None, None, None
+        
+        # Basic metrics
+        total_rows = len(self.df)
+        total_cols = len(self.df.columns)
+        missing_cells = self.df.isnull().sum().sum()
+        total_cells = total_rows * total_cols
+        completeness = ((total_cells - missing_cells) / total_cells) * 100
+        
+        summary = f"""
+## 📊 Data Quality Report
+
+### Dataset Summary
+- **Total Records:** {total_rows:,}
+- **Total Features:** {total_cols}
+- **Data Completeness:** {completeness:.2f}%
+- **Missing Values:** {missing_cells:,} cells
+"""
+        
+        # Missing values by column
+        missing_df = pd.DataFrame({
+            'Column': self.df.columns,
+            'Missing': self.df.isnull().sum().values,
+            'Percentage': (self.df.isnull().sum().values / len(self.df) * 100).round(2)
+        }).sort_values('Missing', ascending=False).head(10)
+        
+        # Visualization: Missing values bar chart
+        fig_missing = go.Figure(go.Bar(
+            x=missing_df['Percentage'],
+            y=missing_df['Column'],
+            orientation='h',
+            marker=dict(color='#ef4444', opacity=0.7),
+            text=missing_df['Percentage'].apply(lambda x: f'{x:.1f}%'),
+            textposition='outside',
+            hovertemplate='<b>%{y}</b><br>Missing: %{x:.1f}%<extra></extra>'
+        ))
+        
+        fig_missing.update_layout(
+            title="Top 10 Features with Missing Values",
+            xaxis_title="Missing Percentage (%)",
+            yaxis_title="Feature",
+            height=400,
+            template="plotly_white",
+            yaxis={'categoryorder': 'total ascending'}
+        )
+        
+        # Numeric summary
+        numeric_cols = self.df.select_dtypes(include=[np.number]).columns[:10]
+        summary_stats = self.df[numeric_cols].describe().T.round(2)
+        
+        return summary, missing_df, fig_missing, summary_stats
     
-    # Tab 3: EDA
-    def eda_tab(self):
-        """Display EDA plots"""
-        plots_dir = Path('demo/plots')
-        plot_files = {
-            'distributions': list((plots_dir / 'distributions').glob('*.png'))[:4],
-            'relationships': list((plots_dir / 'relationships').glob('*.png'))[:4],
-            'categorical': list((plots_dir / 'categorical').glob('*.png'))[:3],
-            'time_series': list((plots_dir / 'time_series').glob('*.png'))[:3]
-        }
-        return plot_files
+    # Tab 3: Enhanced EDA with Interactive Plotly
+    def create_interactive_eda_plots(self):
+        """Generate interactive Plotly charts for EDA"""
+        if self.df is None:
+            return None, None, None, None
+        
+        # 1. Distribution: Gross Revenue
+        fig_gross = go.Figure()
+        fig_gross.add_trace(go.Histogram(
+            x=self.df['Gross_worldwide'],
+            nbinsx=50,
+            marker_color='#3b82f6',
+            opacity=0.7,
+            name='Gross Revenue'
+        ))
+        fig_gross.update_layout(
+            title="Worldwide Gross Distribution",
+            xaxis_title="Gross Revenue ($)",
+            yaxis_title="Frequency",
+            template="plotly_white",
+            height=400,
+            hovermode='x'
+        )
+        
+        # 2. Relationship: Budget vs Gross
+        fig_budget_gross = px.scatter(
+            self.df.sample(min(1000, len(self.df))),
+            x='Budget',
+            y='Gross_worldwide',
+            trendline='ols',
+            color='Rating',
+            size='Rating_Count',
+            hover_data=['Movie_Title', 'Release_Year'],
+            color_continuous_scale='Viridis',
+            title="Budget vs Worldwide Gross (with Rating)"
+        )
+        fig_budget_gross.update_layout(
+            template="plotly_white",
+            height=500,
+            xaxis_title="Budget ($)",
+            yaxis_title="Worldwide Gross ($)"
+        )
+        
+        # 3. Categorical: Genre Performance
+        if 'Genre' in self.df.columns:
+            # Get top genres
+            genre_counts = self.df['Genre'].str.split(',').explode().str.strip().value_counts().head(10)
+            genre_gross = []
+            for genre in genre_counts.index:
+                avg_gross = self.df[self.df['Genre'].str.contains(genre, na=False)]['Gross_worldwide'].mean()
+                genre_gross.append({'Genre': genre, 'Avg_Gross': avg_gross, 'Count': genre_counts[genre]})
+            
+            genre_df = pd.DataFrame(genre_gross).sort_values('Avg_Gross', ascending=False)
+            
+            fig_genre = go.Figure()
+            fig_genre.add_trace(go.Bar(
+                x=genre_df['Genre'],
+                y=genre_df['Avg_Gross'],
+                marker_color='#8b5cf6',
+                text=genre_df['Avg_Gross'].apply(lambda x: f'${x/1e6:.0f}M'),
+                textposition='outside',
+                hovertemplate='<b>%{x}</b><br>Avg Gross: $%{y:,.0f}<extra></extra>'
+            ))
+            fig_genre.update_layout(
+                title="Average Gross by Genre (Top 10)",
+                xaxis_title="Genre",
+                yaxis_title="Average Gross ($)",
+                template="plotly_white",
+                height=400
+            )
+        else:
+            fig_genre = None
+        
+        # 4. Temporal: Release Year Trends
+        yearly_stats = self.df.groupby('Release_Year').agg({
+            'Gross_worldwide': ['mean', 'count'],
+            'Budget': 'mean'
+        }).reset_index()
+        yearly_stats.columns = ['Year', 'Avg_Gross', 'Count', 'Avg_Budget']
+        
+        fig_temporal = make_subplots(
+            rows=2, cols=1,
+            subplot_titles=("Average Gross Over Time", "Number of Movies per Year"),
+            vertical_spacing=0.15
+        )
+        
+        fig_temporal.add_trace(
+            go.Scatter(
+                x=yearly_stats['Year'],
+                y=yearly_stats['Avg_Gross'],
+                mode='lines+markers',
+                marker=dict(color='#10b981', size=8),
+                line=dict(width=2),
+                name='Avg Gross',
+                hovertemplate='<b>%{x}</b><br>Avg Gross: $%{y:,.0f}<extra></extra>'
+            ),
+            row=1, col=1
+        )
+        
+        fig_temporal.add_trace(
+            go.Bar(
+                x=yearly_stats['Year'],
+                y=yearly_stats['Count'],
+                marker_color='#f59e0b',
+                name='Movie Count',
+                hovertemplate='<b>%{x}</b><br>Movies: %{y}<extra></extra>'
+            ),
+            row=2, col=1
+        )
+        
+        fig_temporal.update_layout(
+            template="plotly_white",
+            height=600,
+            showlegend=False
+        )
+        fig_temporal.update_xaxes(title_text="Year", row=2, col=1)
+        fig_temporal.update_yaxes(title_text="Avg Gross ($)", row=1, col=1)
+        fig_temporal.update_yaxes(title_text="Count", row=2, col=1)
+        
+        return fig_gross, fig_budget_gross, fig_genre, fig_temporal
     
     # Tab 4: Statistics
     def stats_tab(self):
-        """Display statistical analysis"""
-        stats_md = f"""
-## 📊 Summary Statistics
-**Central Tendency & Dispersion for Key Features**
+        """Display statistical analysis with interactive heatmap"""
+        if self.df is None:
+            return "⚠️ Data not loaded", None, None, None, None
+        
+        stats_md = """
+## 📊 Statistical Analysis
+
+### Summary Statistics
+Central tendency and dispersion for key features
 """
-        corr_desc = """
-## 🔗 Correlation Analysis
-**Multicollinearity Check (VIF)**
-VIF > 10 indicates high multicollinearity
+        
+        # Correlation heatmap - Filter out columns with too many NaNs
+        numeric_cols = self.df.select_dtypes(include=[np.number]).columns
+        
+        # Keep only columns with less than 50% missing values
+        valid_cols = []
+        for col in numeric_cols:
+            missing_pct = (self.df[col].isnull().sum() / len(self.df)) * 100
+            if missing_pct < 50:  # Keep if less than 50% missing
+                valid_cols.append(col)
+        
+        # Limit to top 15 columns with most variance (most interesting)
+        if len(valid_cols) > 15:
+            # Calculate variance for each column
+            variances = self.df[valid_cols].var().sort_values(ascending=False)
+            valid_cols = variances.head(15).index.tolist()
+        
+        # Create correlation matrix
+        corr_matrix = self.df[valid_cols].corr()
+        
+        fig = go.Figure(data=go.Heatmap(
+            z=corr_matrix.values,
+            x=corr_matrix.columns,
+            y=corr_matrix.columns,
+            colorscale='RdBu_r',
+            zmid=0,
+            text=corr_matrix.values.round(2),
+            texttemplate='%{text}',
+            textfont={"size": 8, "color": "black"},
+            colorbar=dict(title="Correlation"),
+            hovertemplate='%{x} vs %{y}<br>Correlation: %{z:.3f}<extra></extra>'
+        ))
+        
+        fig.update_layout(
+            title=f"Feature Correlation Matrix ({len(valid_cols)} features, <50% missing)",
+            xaxis_title="Features",
+            yaxis_title="Features",
+            height=700,
+            template="plotly_white"
+        )
+        
+        vif_md = """
+### Multicollinearity Check (VIF)
+
+**Interpretation:**
+- VIF < 5: ✅ Low multicollinearity  
+- VIF 5-10: ⚠️ Moderate multicollinearity  
+- VIF > 10: ❌ High multicollinearity
 """
-        return stats_md, self.stats, corr_desc, self.vif
+        
+        return stats_md, self.stats, fig, vif_md, self.vif
     
     # Tab 5: Prediction
-    def predict(self, budget, runtime, rating, rating_count, is_franchise, has_actor, is_summer, is_studio):
-        """Make prediction with all 58 features"""
+    def predict(self, budget, runtime, rating, rating_count, genre, is_franchise, has_actor, is_summer, is_studio):
+        """Make prediction with interactive Plotly charts"""
         if not self.model:
             return "❌ Model not loaded", None
         
@@ -124,11 +355,23 @@ VIF > 10 indicates high multicollinearity
             
             # Override with user inputs
             inputs = {
-                'Budget': budget, 'Runtime': runtime, 'Rating': rating, 'Rating_Count': rating_count,
-                'Log_Budget': np.log1p(budget), 'Release_Year': 2024,
-                'Is_Franchise': int(is_franchise), 'Has_A_List_Actor': int(has_actor),
-                'Is_Summer_Release': int(is_summer), 'Is_Major_Studio': int(is_studio)
+                'Budget': budget, 
+                'Runtime': runtime, 
+                'Rating': rating, 
+                'Rating_Count': rating_count,
+                'Log_Budget': np.log1p(budget), 
+                'Release_Year': 2024,
+                'Is_Franchise': int(is_franchise), 
+                'Has_A_List_Actor': int(has_actor),
+                'Is_Summer_Release': int(is_summer), 
+                'Is_Major_Studio': int(is_studio)
             }
+            
+            # Genre encoding
+            genre_map = {'Action': 0, 'Comedy': 1, 'Drama': 2, 'Sci-Fi': 3, 'Thriller': 4}
+            if 'Primary_Genre' in features:
+                features['Primary_Genre'] = genre_map.get(genre, 0)
+            
             for k, v in inputs.items():
                 if k in features:
                     features[k] = v
@@ -141,86 +384,190 @@ VIF > 10 indicates high multicollinearity
             
             result = f"""
 ## 💰 Prediction Results
-- **Predicted Gross:** ${pred:,.0f}
-- **Budget:** ${budget:,.0f}
-- **Profit:** ${profit:,.0f}
-- **ROI:** {roi:.1f}%
 
-*Using {self.model.get('model_name', 'Random Forest')} with {len(self.model['feature_names'])} features*
+| Metric | Value |
+|--------|-------|
+| **Predicted Gross** | ${pred:,.0f} |
+| **Budget** | ${budget:,.0f} |
+| **Profit** | ${profit:,.0f} |
+| **ROI** | {roi:.1f}% |
+
+*Model: {self.model.get('model_name', 'Random Forest')} with {len(self.model['feature_names'])} features*
 """
             
-            # Plot
-            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
-            ax1.bar(['Budget', 'Gross'], [budget, pred], color=['#FF6B6B', '#4ECDC4'])
-            ax1.set_title('Budget vs Predicted Gross')
-            ax1.set_ylabel('Amount ($)')
-            for i, v in enumerate([budget, pred]):
-                ax1.text(i, v, f'${v/1e6:.0f}M', ha='center', va='bottom')
+            # Enhanced Plotly visualization
+            fig = make_subplots(
+                rows=1, cols=2,
+                subplot_titles=("Budget vs Predicted Gross", "Return on Investment"),
+                specs=[[{"type": "bar"}, {"type": "indicator"}]],
+                column_widths=[0.5, 0.5]
+            )
             
-            ax2.barh(['ROI'], [roi], color='#45B7D1' if roi > 0 else '#FF6B6B')
-            ax2.set_xlabel('ROI (%)')
-            ax2.set_title('Return on Investment')
-            ax2.axvline(0, color='black', linestyle='--', linewidth=0.5)
-            plt.tight_layout()
+            # Bar chart with better colors
+            colors = ['#ef4444' if v < pred/2 else '#3b82f6' if v == budget else '#10b981' 
+                     for v in [budget, pred]]
+            fig.add_trace(
+                go.Bar(
+                    x=['Budget', 'Predicted Gross'],
+                    y=[budget, pred],
+                    marker_color=colors,
+                    text=[f'${budget/1e6:.0f}M', f'${pred/1e6:.0f}M'],
+                    textposition='outside',
+                    textfont=dict(size=14, color='black'),
+                    hovertemplate='<b>%{x}</b><br>$%{y:,.0f}<extra></extra>'
+                ),
+                row=1, col=1
+            )
+            
+            # ROI Indicator with color coding
+            fig.add_trace(
+                go.Indicator(
+                    mode="number+delta+gauge",
+                    value=roi,
+                    delta={'reference': 100, 'relative': False, 'suffix': '%'},
+                    title={'text': "ROI (%)", 'font': {'size': 18}},
+                    number={'suffix': "%", 'font': {'size': 40}},
+                    gauge={
+                        'axis': {'range': [-100, 500]},
+                        'bar': {'color': '#10b981' if roi > 100 else '#f59e0b' if roi > 0 else '#ef4444'},
+                        'steps': [
+                            {'range': [-100, 0], 'color': '#fee2e2'},
+                            {'range': [0, 100], 'color': '#fef3c7'},
+                            {'range': [100, 500], 'color': '#d1fae5'}
+                        ],
+                        'threshold': {
+                            'line': {'color': "red", 'width': 4},
+                            'thickness': 0.75,
+                            'value': 100
+                        }
+                    },
+                    domain={'x': [0, 1], 'y': [0, 1]}
+                ),
+                row=1, col=2
+            )
+            
+            fig.update_layout(
+                height=450,
+                showlegend=False,
+                template="plotly_white"
+            )
+            fig.update_yaxes(title_text="Amount ($)", row=1, col=1)
             
             return result, fig
         except Exception as e:
-            return f"❌ Error: {e}", None
+            import traceback
+            return f"❌ Error: {e}\n\n{traceback.format_exc()}", None
     
     # Tab 6: Model Comparison
     def models_tab(self):
-        """Display all 7 models comparison"""
+        """Display model comparison with enhanced interactive charts"""
         if self.comparison is None:
             return "⚠️ Model comparison not available", None, None
         
         summary = f"""
 ## 🏆 Model Performance Comparison
-**{len(self.comparison)} models trained and evaluated**
+
+**Total Models Trained:** {len(self.comparison)}
 
 ### Top 3 Models
 """
+        medals = ['🥇', '🥈', '🥉']
         for i, row in self.comparison.head(3).iterrows():
-            medal = ['🥇', '🥈', '🥉'][i]
+            medal = medals[i] if i < 3 else '•'
             summary += f"""
 {medal} **{row['Model']}**
 - Test R²: **{row['Test_R2']:.4f}** | MAE: ${row['Test_MAE']:,.0f}
 - Train R²: {row['Train_R2']:.4f} | Overfit: {row['Overfit']:.4f}
 """
         
-        # Plot comparison
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+        # Enhanced comparison chart
+        fig = make_subplots(
+            rows=1, cols=2,
+            subplot_titles=("Test R² Comparison", "Train vs Test R² (Overfitting Analysis)"),
+            column_widths=[0.5, 0.5]
+        )
         
         models = self.comparison['Model'].values
         test_r2 = self.comparison['Test_R2'].values
         train_r2 = self.comparison['Train_R2'].values
         
-        x = np.arange(len(models))
-        ax1.barh(x, test_r2, color='#4ECDC4', alpha=0.8, label='Test R²')
-        ax1.set_yticks(x)
-        ax1.set_yticklabels(models, fontsize=9)
-        ax1.set_xlabel('R² Score')
-        ax1.set_title('Test R² Comparison')
-        ax1.axvline(0.9, color='red', linestyle='--', alpha=0.3, label='0.9 threshold')
-        ax1.legend()
+        # Gradient colors for bars
+        colors = px.colors.sequential.Viridis[::2]  # Get every other color
         
-        ax2.scatter(train_r2, test_r2, s=100, alpha=0.6, c=range(len(models)), cmap='viridis')
-        ax2.plot([0.8, 1.0], [0.8, 1.0], 'r--', alpha=0.3, label='Perfect fit')
-        ax2.set_xlabel('Train R²')
-        ax2.set_ylabel('Test R²')
-        ax2.set_title('Overfitting Analysis')
-        ax2.legend()
-        for i, model in enumerate(models):
-            ax2.annotate(model, (train_r2[i], test_r2[i]), fontsize=7, alpha=0.7)
+        # Bar chart for Test R²
+        fig.add_trace(
+            go.Bar(
+                y=models,
+                x=test_r2,
+                orientation='h',
+                marker=dict(
+                    color=test_r2,
+                    colorscale='Viridis',
+                    showscale=True,
+                    colorbar=dict(title="R²", x=0.45)
+                ),
+                text=test_r2.round(4),
+                textposition='outside',
+                textfont=dict(size=10, color='black'),
+                name='Test R²',
+                hovertemplate='<b>%{y}</b><br>R²: %{x:.4f}<extra></extra>'
+            ),
+            row=1, col=1
+        )
         
-        plt.tight_layout()
+        # Scatter for overfitting with enhanced styling
+        fig.add_trace(
+            go.Scatter(
+                x=train_r2,
+                y=test_r2,
+                mode='markers+text',
+                marker=dict(
+                    size=15,
+                    color=list(range(len(models))),
+                    colorscale='Plasma',
+                    showscale=False,
+                    line=dict(width=2, color='white')
+                ),
+                text=models,
+                textposition='top center',
+                textfont=dict(size=9, color='black'),
+                name='Models',
+                hovertemplate='<b>%{text}</b><br>Train R²: %{x:.4f}<br>Test R²: %{y:.4f}<extra></extra>'
+            ),
+            row=1, col=2
+        )
+        
+        # Perfect fit line
+        fig.add_trace(
+            go.Scatter(
+                x=[0.8, 1.0],
+                y=[0.8, 1.0],
+                mode='lines',
+                line=dict(dash='dash', color='red', width=2),
+                name='Perfect Fit',
+                showlegend=False
+            ),
+            row=1, col=2
+        )
+        
+        fig.update_xaxes(title_text="R² Score", row=1, col=1)
+        fig.update_xaxes(title_text="Train R²", row=1, col=2)
+        fig.update_yaxes(title_text="Test R²", row=1, col=2)
+        
+        fig.update_layout(
+            height=550,
+            showlegend=False,
+            template="plotly_white",
+            hovermode='closest'
+        )
         
         return summary, self.comparison, fig
     
-    # Tab 7: Features
+    # Tab 7: Feature Importance
     def features_tab(self):
-        """Feature engineering showcase"""
+        """Feature engineering showcase with enhanced interactive charts"""
         if not self.model or 'model' not in self.model:
-            return "⚠️ Feature importance not available", None
+            return "⚠️ Feature importance not available", None, None
         
         # Get feature importance
         if hasattr(self.model['model'], 'feature_importances_'):
@@ -232,31 +579,48 @@ VIF > 10 indicates high multicollinearity
             
             summary = f"""
 ## 🔧 Feature Engineering
+
 **Total Features:** {len(self.model['feature_names'])}
 
-### Feature Categories Created
-1. **Temporal** (9): Release_Month, Quarter, DayOfWeek, Is_Summer, Is_Holiday, Is_Awards_Season, Decade, Movie_Age
-2. **Budget** (5): Log_Budget, Budget_Tier, Budget_Percentile, Budget_Per_Genre, Is_High_Budget
-3. **Content** (10+): Genre binaries, Is_Franchise, Is_Sequel, Is_Adaptation, Has_Superhero
-4. **Star Power** (6): Has_A_List_Actor, Has_A_List_Director, Top_Actor_Count, Director/Actor Avg Gross
-5. **Studio** (3): Is_Major_Studio, Studio_Avg_Gross, Studio_Count
-6. **Rating** (8): MPAA_Encoded, Is_Family_Friendly, Target_Audience, Rating_Bucket, Is_Highly_Rated
-7. **Geographic** (6): Is_English, Is_Multilingual, Is_US_Production, Primary_Country, Market_Reach
-8. **Ratios** (4): Budget_Runtime_Ratio, Cast_to_Budget_Ratio, Keyword_Density, Production_Scale
+### Feature Categories
+1. **Temporal** (9): Release_Month, Quarter, Is_Summer, Is_Holiday, etc.
+2. **Budget** (5): Log_Budget, Budget_Tier, Budget_Percentile, etc.
+3. **Content** (10+): Genre binaries, Is_Franchise, Is_Sequel, etc.
+4. **Star Power** (6): Has_A_List_Actor, Has_A_List_Director, etc.
+5. **Studio** (3): Is_Major_Studio, Studio_Avg_Gross, etc.
+6. **Rating** (8): MPAA_Encoded, Is_Family_Friendly, etc.
+7. **Geographic** (6): Is_English, Is_Multilingual, etc.
+8. **Ratios** (4): Budget_Runtime_Ratio, Cast_to_Budget_Ratio, etc.
 
-### Top 20 Most Important Features
+### Top 20 Important Features
 """
             
-            # Plot
-            fig, ax = plt.subplots(figsize=(10, 8))
-            colors = plt.cm.viridis(np.linspace(0, 1, len(feat_df)))
-            ax.barh(range(len(feat_df)), feat_df['Importance'], color=colors)
-            ax.set_yticks(range(len(feat_df)))
-            ax.set_yticklabels(feat_df['Feature'], fontsize=9)
-            ax.set_xlabel('Importance')
-            ax.set_title('Top 20 Feature Importance')
-            ax.invert_yaxis()
-            plt.tight_layout()
+            # Enhanced feature importance chart
+            fig = go.Figure(go.Bar(
+                y=feat_df['Feature'],
+                x=feat_df['Importance'],
+                orientation='h',
+                marker=dict(
+                    color=feat_df['Importance'],
+                    colorscale='Turbo',
+                    showscale=True,
+                    colorbar=dict(title="Importance"),
+                    line=dict(color='rgba(0,0,0,0.3)', width=1)
+                ),
+                text=feat_df['Importance'].round(4),
+                textposition='outside',
+                textfont=dict(size=10, color='black'),
+                hovertemplate='<b>%{y}</b><br>Importance: %{x:.4f}<extra></extra>'
+            ))
+            
+            fig.update_layout(
+                title="Top 20 Feature Importance (Interactive)",
+                xaxis_title="Importance Score",
+                yaxis_title="Feature",
+                height=750,
+                template="plotly_white",
+                yaxis=dict(autorange="reversed")
+            )
             
             return summary, feat_df, fig
         else:
@@ -264,107 +628,206 @@ VIF > 10 indicates high multicollinearity
     
     # Build Interface
     def build(self):
-        """Create Gradio interface"""
-        with gr.Blocks(title="🎬 Box Office Prediction", theme=gr.themes.Soft()) as app:
+        """Create Gradio interface with clean modern theme"""
+        
+        with gr.Blocks(title="Box Office Prediction - IT4142E") as app:
+            
+            gr.Markdown("# 🎬 Box Office Revenue Prediction System\n**IT4142E - Introduction to Data Science**")
             
             with gr.Tabs():
                 # Tab 1: Overview
-                with gr.Tab("🏠 Overview"):
-                    gr.Markdown(self.overview_tab())
+                with gr.Tab("📊 Overview"):
+                    overview_text = self.overview_tab()
+                    gr.Markdown(overview_text)
                 
                 # Tab 2: Data Quality
-                with gr.Tab("📊 Data Quality"):
-                    gr.HTML(self.quality_tab())
+                with gr.Tab("📋 Data Quality"):
+                    summary, missing_df, fig_missing, stats_df = self.quality_tab()
+                    gr.Markdown(summary)
+                    
+                    with gr.Row():
+                        with gr.Column():
+                            gr.Markdown("### Missing Values Chart")
+                            if fig_missing is not None:
+                                gr.Plot(fig_missing)
+                        with gr.Column():
+                            gr.Markdown("### Missing Values Table")
+                            if missing_df is not None:
+                                gr.Dataframe(missing_df, interactive=False)
+                    
+                    gr.Markdown("### Numeric Features Summary")
+                    if stats_df is not None:
+                        gr.Dataframe(stats_df, interactive=False)
                 
-                # Tab 3: EDA
-                with gr.Tab("📈 EDA"):
-                    gr.Markdown("## Exploratory Data Analysis\n**25+ visualizations generated**")
-                    plot_files = self.eda_tab()
+                # Tab 3: EDA - ENHANCED with Interactive Plotly
+                with gr.Tab("📈 Exploratory Analysis"):
+                    gr.Markdown("## 📈 Exploratory Data Analysis\n**Interactive visualizations - zoom, pan, and hover for details**")
                     
-                    gr.Markdown("### Distribution Analysis")
-                    with gr.Row():
-                        for img in plot_files['distributions']:
-                            gr.Image(value=load_image(img), label=img.stem)
+                    fig_gross, fig_budget_gross, fig_genre, fig_temporal = self.create_interactive_eda_plots()
                     
-                    gr.Markdown("### Relationship Analysis")
                     with gr.Row():
-                        for img in plot_files['relationships']:
-                            gr.Image(value=load_image(img), label=img.stem)
+                        with gr.Column():
+                            if fig_gross:
+                                gr.Plot(fig_gross)
+                        with gr.Column():
+                            if fig_budget_gross:
+                                gr.Plot(fig_budget_gross)
                     
-                    gr.Markdown("### Categorical Analysis")
                     with gr.Row():
-                        for img in plot_files['categorical']:
-                            gr.Image(value=load_image(img), label=img.stem)
+                        if fig_genre:
+                            gr.Plot(fig_genre)
                     
-                    gr.Markdown("### Time Series Analysis")
                     with gr.Row():
-                        for img in plot_files['time_series']:
-                            gr.Image(value=load_image(img), label=img.stem)
+                        if fig_temporal:
+                            gr.Plot(fig_temporal)
                 
                 # Tab 4: Statistics
-                with gr.Tab("🔬 Statistics"):
-                    stats_md, stats_df, corr_md, vif_df = self.stats_tab()
+                with gr.Tab("🔬 Statistical Analysis"):
+                    stats_md, stats_df, corr_fig, vif_md, vif_df = self.stats_tab()
                     gr.Markdown(stats_md)
                     if stats_df is not None:
                         gr.Dataframe(stats_df, interactive=False)
-                    gr.Markdown(corr_md)
+                    
+                    gr.Markdown("### Interactive Correlation Matrix")
+                    if corr_fig is not None:
+                        gr.Plot(corr_fig)
+                    
+                    gr.Markdown(vif_md)
                     if vif_df is not None:
                         gr.Dataframe(vif_df, interactive=False)
                 
                 # Tab 5: Prediction
-                with gr.Tab("🎯 Predict"):
-                    gr.Markdown("### Make Box Office Prediction")
+                with gr.Tab("🎯 Make Prediction"):
+                    gr.Markdown("### Predict Box Office Revenue")
+                    
                     with gr.Row():
                         with gr.Column():
-                            budget = gr.Number(label="Budget ($)", value=50000000, minimum=0)
-                            runtime = gr.Number(label="Runtime (min)", value=120, minimum=40, maximum=300)
-                            rating = gr.Slider(label="IMDb Rating", minimum=1, maximum=10, value=7.0, step=0.1)
-                            rating_count = gr.Number(label="Rating Count", value=100000, minimum=0)
+                            budget = gr.Number(label="💵 Budget ($)", value=50000000, minimum=0)
+                            runtime = gr.Number(label="⏱️ Runtime (minutes)", value=120, minimum=40, maximum=300)
+                            rating = gr.Slider(label="⭐ IMDb Rating", minimum=1, maximum=10, value=7.0, step=0.1)
+                            rating_count = gr.Number(label="👥 Rating Count", value=100000, minimum=0)
+                        
                         with gr.Column():
-                            is_franchise = gr.Checkbox(label="Part of Franchise", value=False)
-                            has_actor = gr.Checkbox(label="Has A-List Actor", value=False)
-                            is_summer = gr.Checkbox(label="Summer Release", value=False)
-                            is_studio = gr.Checkbox(label="Major Studio", value=True)
+                            genre = gr.Dropdown(
+                                label="🎭 Primary Genre",
+                                choices=["Action", "Comedy", "Drama", "Sci-Fi", "Thriller"],
+                                value="Action"
+                            )
+                            is_franchise = gr.Checkbox(label="🎬 Part of Franchise", value=False)
+                            has_actor = gr.Checkbox(label="⭐ Has A-List Actor", value=False)
+                            is_summer = gr.Checkbox(label="☀️ Summer Release (Jun-Aug)", value=False)
+                            is_studio = gr.Checkbox(label="🏢 Major Studio", value=True)
                     
-                    predict_btn = gr.Button("🎬 Predict", variant="primary")
+                    predict_btn = gr.Button("🎬 Predict Box Office Revenue", variant="primary", size="lg")
                     pred_output = gr.Markdown()
                     pred_plot = gr.Plot()
                     
                     predict_btn.click(
                         self.predict,
-                        [budget, runtime, rating, rating_count, is_franchise, has_actor, is_summer, is_studio],
+                        [budget, runtime, rating, rating_count, genre, is_franchise, has_actor, is_summer, is_studio],
                         [pred_output, pred_plot]
                     )
                 
                 # Tab 6: Models
-                with gr.Tab("🏆 Models"):
+                with gr.Tab("🏆 Model Comparison"):
                     summary, comp_df, comp_fig = self.models_tab()
                     gr.Markdown(summary)
+                    
+                    gr.Markdown("### Full Comparison Table")
                     if comp_df is not None:
                         gr.Dataframe(comp_df, interactive=False)
+                    
                     if comp_fig is not None:
                         gr.Plot(comp_fig)
                 
                 # Tab 7: Features
-                with gr.Tab("📚 Features"):
+                with gr.Tab("📚 Feature Importance"):
                     feat_summary, feat_df, feat_fig = self.features_tab()
                     gr.Markdown(feat_summary)
+                    
                     if feat_df is not None:
                         gr.Dataframe(feat_df, interactive=False)
+                    
                     if feat_fig is not None:
                         gr.Plot(feat_fig)
+            
+            gr.Markdown("""
+---
+**Project:** Box Office Revenue Prediction | **Course:** IT4142E - Introduction to Data Science  
+**Pipeline:** Data Collection (Scrapy) → Cleaning → EDA → Feature Engineering (52 features) → ML (7 models) → Evaluation
+""")
         
         return app
 
+
 def main():
-    """Launch app"""
-    print("="*60)
-    print("🎬 COMPREHENSIVE BOX OFFICE PREDICTION DEMO")
-    print("="*60)
+    """Launch application"""
+    print("="*70)
+    print("🎬 BOX OFFICE PREDICTION - INTERACTIVE DEMO")
+    print("   IT4142E - Introduction to Data Science")
+    print("="*70)
+    
     demo = BoxOfficeDemo()
     app = demo.build()
-    print("\n✓ Launching at http://localhost:7860")
-    app.launch(server_name="0.0.0.0", server_port=7860, share=False)
+    
+    print("\n✓ Demo ready!")
+    print("📍 Local URL: http://localhost:7860")
+    print("📊 Features: Interactive Plotly charts with zoom, pan, and hover")
+    print("🎨 Enhanced UI with better contrast and visual appeal")
+    print("\n" + "="*70 + "\n")
+    
+    app.launch(
+        server_name="0.0.0.0",
+        server_port=7860,
+        share=False,
+        show_error=True,
+        # Gradio 6.0: Simple CSS that works with both dark and light modes
+        css="""
+        /* Simple professional CSS that works with both themes */
+        .gradio-container {
+            font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif !important;
+        }
+        .tab-nav button {
+            font-size: 15px !important;
+            font-weight: 600 !important;
+            border-radius: 6px !important;
+            padding: 10px 16px !important;
+            margin: 0 4px !important;
+        }
+        h1 {
+            border-bottom: 3px solid #3b82f6;
+            padding-bottom: 12px;
+            font-size: 2.2em !important;
+            font-weight: 700 !important;
+        }
+        h2 {
+            margin-top: 24px !important;
+            font-weight: 600 !important;
+            font-size: 1.6em !important;
+        }
+        h3 {
+            font-weight: 600 !important;
+            font-size: 1.2em !important;
+        }
+        .table-wrap table {
+            font-size: 14px !important;
+        }
+        .table-wrap th {
+            font-weight: 700 !important;
+        }
+        pre {
+            font-size: 16px !important;
+            line-height: 1.6 !important;
+            padding: 16px !important;
+            border-radius: 6px !important;
+        }
+        button {
+            font-weight: 600 !important;
+            border-radius: 6px !important;
+        }
+        """
+    )
+
 
 if __name__ == "__main__":
     main()
