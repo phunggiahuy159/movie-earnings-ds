@@ -1,0 +1,425 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Data Quality Report</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #555;
+            margin-top: 30px;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 5px;
+        }
+        h3 {
+            color: #666;
+            margin-top: 20px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 15px 0;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        p {
+            line-height: 1.6;
+        }
+        .footer {
+            margin-top: 50px;
+            text-align: center;
+            color: #999;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎬 Movie Dataset - Data Quality Report</h1>
+    <p><strong>Generated:</strong> 2026-01-05 08:27:59</p>
+    <p><strong>Dataset:</strong> dataset/data_joined.csv</p>
+    <hr>
+    
+    <h2>📊 Basic Dataset Information</h2>
+<table border='1' style='border-collapse: collapse; width: 50%;'>
+<tr><td><strong>Total Movies</strong></td><td>17300</td></tr>
+<tr><td><strong>Total Columns</strong></td><td>17</td></tr>
+<tr><td><strong>Memory Usage</strong></td><td>21.01 MB</td></tr>
+</table><br>
+<h2>🔍 Missing Values Analysis</h2>
+<p><strong>Columns with missing data: 12</strong></p>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Column</th>
+      <th>Missing_Count</th>
+      <th>Missing_Percent</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>ListOfCertificate</td>
+      <td>17300</td>
+      <td>100.00</td>
+    </tr>
+    <tr>
+      <td>Budget</td>
+      <td>8593</td>
+      <td>49.67</td>
+    </tr>
+    <tr>
+      <td>Filming_Location</td>
+      <td>5347</td>
+      <td>30.91</td>
+    </tr>
+    <tr>
+      <td>Gross_worldwide</td>
+      <td>2971</td>
+      <td>17.17</td>
+    </tr>
+    <tr>
+      <td>Release_Data</td>
+      <td>561</td>
+      <td>3.24</td>
+    </tr>
+    <tr>
+      <td>Keywords</td>
+      <td>57</td>
+      <td>0.33</td>
+    </tr>
+    <tr>
+      <td>Studios</td>
+      <td>54</td>
+      <td>0.31</td>
+    </tr>
+    <tr>
+      <td>Languages</td>
+      <td>27</td>
+      <td>0.16</td>
+    </tr>
+    <tr>
+      <td>Cast</td>
+      <td>4</td>
+      <td>0.02</td>
+    </tr>
+    <tr>
+      <td>Genre</td>
+      <td>1</td>
+      <td>0.01</td>
+    </tr>
+    <tr>
+      <td>Runtime</td>
+      <td>1</td>
+      <td>0.01</td>
+    </tr>
+    <tr>
+      <td>Countries</td>
+      <td>2</td>
+      <td>0.01</td>
+    </tr>
+  </tbody>
+</table>
+<br>
+<h2>🔄 Duplicate Analysis</h2>
+<p><strong>Total Movies:</strong> 17300</p>
+<p><strong>Unique Movie IDs:</strong> 17300</p>
+<p><strong>Duplicate IDs:</strong> 0</p>
+<p style='color: green;'>✓ No duplicate Movie_IDs</p>
+<br>
+<h2>📝 Data Types</h2>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Column</th>
+      <th>Type</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Movie_ID</td>
+      <td>int64</td>
+    </tr>
+    <tr>
+      <td>Movie_Title</td>
+      <td>object</td>
+    </tr>
+    <tr>
+      <td>Budget</td>
+      <td>object</td>
+    </tr>
+    <tr>
+      <td>Cast</td>
+      <td>object</td>
+    </tr>
+    <tr>
+      <td>Crew</td>
+      <td>object</td>
+    </tr>
+    <tr>
+      <td>Studios</td>
+      <td>object</td>
+    </tr>
+    <tr>
+      <td>Genre</td>
+      <td>object</td>
+    </tr>
+    <tr>
+      <td>Keywords</td>
+      <td>object</td>
+    </tr>
+    <tr>
+      <td>Languages</td>
+      <td>object</td>
+    </tr>
+    <tr>
+      <td>Countries</td>
+      <td>object</td>
+    </tr>
+    <tr>
+      <td>Filming_Location</td>
+      <td>object</td>
+    </tr>
+    <tr>
+      <td>Release_Data</td>
+      <td>object</td>
+    </tr>
+    <tr>
+      <td>Runtime</td>
+      <td>object</td>
+    </tr>
+    <tr>
+      <td>Gross_worldwide</td>
+      <td>object</td>
+    </tr>
+    <tr>
+      <td>Rating</td>
+      <td>float64</td>
+    </tr>
+    <tr>
+      <td>Rating_Count</td>
+      <td>int64</td>
+    </tr>
+    <tr>
+      <td>ListOfCertificate</td>
+      <td>float64</td>
+    </tr>
+  </tbody>
+</table>
+<br>
+<h2>📏 Value Range Validation</h2>
+<ul>
+<li>⚠️ 5 movies with future release dates</li>
+</ul>
+<br>
+<h2>📈 Numeric Column Statistics</h2>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Column</th>
+      <th>Count</th>
+      <th>Mean</th>
+      <th>Median</th>
+      <th>Std</th>
+      <th>Min</th>
+      <th>Max</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Rating</td>
+      <td>17300</td>
+      <td>6.54</td>
+      <td>6.60</td>
+      <td>1.03</td>
+      <td>1.00</td>
+      <td>9.30</td>
+    </tr>
+    <tr>
+      <td>Rating_Count</td>
+      <td>17300</td>
+      <td>65112.54</td>
+      <td>17868.50</td>
+      <td>153140.05</td>
+      <td>1244.00</td>
+      <td>3137468.00</td>
+    </tr>
+  </tbody>
+</table>
+<br>
+<h2>📊 Categorical Column Distributions</h2>
+<h3>Genre</h3>
+<p><strong>Unique values:</strong> 595</p>
+<p><strong>Top 5 most common:</strong></p>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Count</th>
+    </tr>
+    <tr>
+      <th>Genre</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>Drama</th>
+      <td>808</td>
+    </tr>
+    <tr>
+      <th>Comedy,Drama,Romance</th>
+      <td>761</td>
+    </tr>
+    <tr>
+      <th>Comedy,Drama</th>
+      <td>613</td>
+    </tr>
+    <tr>
+      <th>Drama,Romance</th>
+      <td>612</td>
+    </tr>
+    <tr>
+      <th>Comedy</th>
+      <td>562</td>
+    </tr>
+  </tbody>
+</table>
+<h3>Studios</h3>
+<p><strong>Unique values:</strong> 14127</p>
+<p><strong>Top 5 most common:</strong></p>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Count</th>
+    </tr>
+    <tr>
+      <th>Studios</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>Paramount Pictures</th>
+      <td>153</td>
+    </tr>
+    <tr>
+      <th>Twentieth Century Fox</th>
+      <td>151</td>
+    </tr>
+    <tr>
+      <th>Warner Bros.</th>
+      <td>138</td>
+    </tr>
+    <tr>
+      <th>Universal Pictures</th>
+      <td>118</td>
+    </tr>
+    <tr>
+      <th>Metro-Goldwyn-Mayer (MGM)</th>
+      <td>106</td>
+    </tr>
+  </tbody>
+</table>
+<h3>Languages</h3>
+<p><strong>Unique values:</strong> 2128</p>
+<p><strong>Top 5 most common:</strong></p>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Count</th>
+    </tr>
+    <tr>
+      <th>Languages</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>English</th>
+      <td>8204</td>
+    </tr>
+    <tr>
+      <th>English,Spanish</th>
+      <td>730</td>
+    </tr>
+    <tr>
+      <th>Hindi</th>
+      <td>574</td>
+    </tr>
+    <tr>
+      <th>English,French</th>
+      <td>444</td>
+    </tr>
+    <tr>
+      <th>French</th>
+      <td>353</td>
+    </tr>
+  </tbody>
+</table>
+<h3>Countries</h3>
+<p><strong>Unique values:</strong> 1622</p>
+<p><strong>Top 5 most common:</strong></p>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Count</th>
+    </tr>
+    <tr>
+      <th>Countries</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>United States</th>
+      <td>7267</td>
+    </tr>
+    <tr>
+      <th>India</th>
+      <td>996</td>
+    </tr>
+    <tr>
+      <th>United Kingdom</th>
+      <td>661</td>
+    </tr>
+    <tr>
+      <th>United Kingdom,United States</th>
+      <td>538</td>
+    </tr>
+    <tr>
+      <th>Japan</th>
+      <td>388</td>
+    </tr>
+  </tbody>
+</table>
+<br>
+    
+    <div class="footer">
+        <p>Generated by Data Quality Checker | Movie Box Office Prediction Project</p>
+    </div>
+</body>
+</html>

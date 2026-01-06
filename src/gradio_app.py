@@ -1,6 +1,6 @@
 """
-Gradio Interactive App for Box Office Prediction
-Includes EDA visualizations, model predictions, and performance metrics
+Comprehensive Gradio Demo for Box Office Prediction
+Showcases: EDA, Statistics, 7 Models, Feature Engineering
 """
 
 import gradio as gr
@@ -9,289 +9,362 @@ import numpy as np
 import pickle
 import matplotlib.pyplot as plt
 from pathlib import Path
+from PIL import Image
 
-# Import our modules
-import sys
-sys.path.append('src')
-from eda_visualizations import EDAVisualizer
+# Helper functions
+def load_pickle(path):
+    """Load pickle file safely"""
+    return pickle.load(open(path, 'rb')) if Path(path).exists() else None
 
+def load_csv(path):
+    """Load CSV safely"""
+    return pd.read_csv(path) if Path(path).exists() else None
 
-class BoxOfficeApp:
+def load_html(path):
+    """Load HTML file"""
+    return open(path, 'r', encoding='utf-8').read() if Path(path).exists() else "<p>File not found</p>"
+
+def load_image(path):
+    """Load image safely"""
+    return Image.open(path) if Path(path).exists() else None
+
+class BoxOfficeDemo:
     def __init__(self):
-        self.model_data = None
-        self.df = None
-        self.visualizer = None
-        self.load_resources()
-        
-    def load_resources(self):
-        """Load model and data"""
-        # Load model
-        model_path = 'models/box_office_model.pkl'
-        if Path(model_path).exists():
-            with open(model_path, 'rb') as f:
-                self.model_data = pickle.load(f)
-            print("Model loaded successfully")
-        else:
-            print(f"Warning: Model not found at {model_path}")
-            
-        # Load data
-        data_path = 'dataset/data_cleaned.csv'
-        if Path(data_path).exists():
-            self.df = pd.read_csv(data_path)
-            print(f"Data loaded: {len(self.df)} movies")
-        else:
-            print(f"Warning: Data not found at {data_path}")
-            
-        # Initialize visualizer
-        self.visualizer = EDAVisualizer(data_path)
-        if self.df is not None:
-            self.visualizer.df = self.df
+        print("Loading resources...")
+        self.model = load_pickle('models/box_office_model.pkl')
+        self.df = load_csv('dataset/data_cleaned.csv')
+        self.comparison = load_csv('demo/model_comparison.csv')
+        self.stats = load_csv('demo/stats_summary.csv')
+        self.vif = load_csv('demo/vif_report.csv')
+        print(f"✓ Loaded: {len(self.df) if self.df is not None else 0} movies, {len(self.model['feature_names']) if self.model else 0} features")
     
-    def predict_gross(self, budget, runtime, rating, rating_count, 
-                      cast_count, crew_count, genre_count, keywords_count,
-                      languages_count, countries_count, release_year, primary_genre):
-        """Make prediction for box office gross"""
-        
-        if self.model_data is None:
-            return "Error: Model not loaded", None
-        
-        try:
-            # Encode genre
-            genre_encoder = self.model_data['label_encoders']['Primary_Genre']
-            
-            if primary_genre not in genre_encoder.classes_:
-                primary_genre_encoded = 0  # Default to first class
-            else:
-                primary_genre_encoded = genre_encoder.transform([primary_genre])[0]
-            
-            # Create feature vector
-            features = np.array([[
-                budget, runtime, rating, rating_count,
-                cast_count, crew_count, genre_count, keywords_count,
-                languages_count, countries_count, release_year, primary_genre_encoded
-            ]])
-            
-            # Make prediction
-            model = self.model_data['model']
-            prediction = model.predict(features)[0]
-            
-            # Calculate potential ROI
-            roi = ((prediction - budget) / budget * 100) if budget > 0 else 0
-            
-            result = f"""
-### Prediction Results
+    # Tab 1: Overview
+    def overview_tab(self):
+        """Project overview with key metrics"""
+        metrics = f"""
+# 🎬 Movie Box Office Prediction
+**Advanced ML System with Comprehensive Feature Engineering**
 
-**Predicted Worldwide Gross:** ${prediction:,.0f}
+## 🎯 Project Goals
+Predict worldwide box office gross using 19,000 movies dataset, demonstrating:
+- Data Science Process (Collection → Cleaning → EDA → Modeling → Evaluation)
+- Advanced Feature Engineering (52 new features created)
+- Model Comparison (7 ML algorithms)
+- Statistical Analysis & Visualization
 
-**Budget:** ${budget:,.0f}
+## 📊 Key Results
+- **Dataset:** {len(self.df):,} movies ({self.df['Release_Year'].min():.0f}-{self.df['Release_Year'].max():.0f})
+- **Features:** {len(self.model['feature_names'])} engineered features
+- **Best Model:** {self.model.get('model_name', 'Random_Forest')}
+- **Performance:** R² = {self.comparison.iloc[0]['Test_R2']:.4f}, MAE = ${self.comparison.iloc[0]['Test_MAE']:,.0f}
+- **Models Compared:** 7 algorithms (Linear, Ridge, Lasso, ElasticNet, Tree, Forest, Boosting)
 
-**Expected Profit:** ${(prediction - budget):,.0f}
-
-**ROI:** {roi:.1f}%
+## 📚 Course Topics Demonstrated
+✅ Data Collection & Cleaning  
+✅ EDA & Visualization (25+ plots)  
+✅ Statistical Analysis (Correlation, VIF, Normality)  
+✅ Feature Engineering (Temporal, Star Power, Studio, etc.)  
+✅ Model Comparison & Cross-Validation  
+✅ Evaluation Metrics (R², MAE, RMSE, Learning Curves)  
 
 ---
+**Navigate tabs above to explore each component**
+"""
+        return metrics
+    
+    # Tab 2: Data Quality
+    def quality_tab(self):
+        """Embed data quality HTML report"""
+        html = load_html('demo/data_quality_report.html')
+        return f'<iframe srcdoc="{html}" width="100%" height="800px"></iframe>'
+    
+    # Tab 3: EDA
+    def eda_tab(self):
+        """Display EDA plots"""
+        plots_dir = Path('demo/plots')
+        plot_files = {
+            'distributions': list((plots_dir / 'distributions').glob('*.png'))[:4],
+            'relationships': list((plots_dir / 'relationships').glob('*.png'))[:4],
+            'categorical': list((plots_dir / 'categorical').glob('*.png'))[:3],
+            'time_series': list((plots_dir / 'time_series').glob('*.png'))[:3]
+        }
+        return plot_files
+    
+    # Tab 4: Statistics
+    def stats_tab(self):
+        """Display statistical analysis"""
+        stats_md = f"""
+## 📊 Summary Statistics
+**Central Tendency & Dispersion for Key Features**
+"""
+        corr_desc = """
+## 🔗 Correlation Analysis
+**Multicollinearity Check (VIF)**
+VIF > 10 indicates high multicollinearity
+"""
+        return stats_md, self.stats, corr_desc, self.vif
+    
+    # Tab 5: Prediction
+    def predict(self, budget, runtime, rating, rating_count, is_franchise, has_actor, is_summer, is_studio):
+        """Make prediction with all 58 features"""
+        if not self.model:
+            return "❌ Model not loaded", None
+        
+        try:
+            # Build feature dict with defaults
+            features = {fname: 0 for fname in self.model['feature_names']}
+            
+            # Fill defaults by pattern
+            for fname in features:
+                if 'Count' in fname: features[fname] = 3
+                elif 'Year' in fname: features[fname] = 2024
+                elif 'Log_Budget' in fname: features[fname] = np.log1p(budget)
+                elif 'Ratio' in fname: features[fname] = 1.0
+                elif 'Score' in fname or '_Gross' in fname: features[fname] = 100000000
+            
+            # Override with user inputs
+            inputs = {
+                'Budget': budget, 'Runtime': runtime, 'Rating': rating, 'Rating_Count': rating_count,
+                'Log_Budget': np.log1p(budget), 'Release_Year': 2024,
+                'Is_Franchise': int(is_franchise), 'Has_A_List_Actor': int(has_actor),
+                'Is_Summer_Release': int(is_summer), 'Is_Major_Studio': int(is_studio)
+            }
+            for k, v in inputs.items():
+                if k in features:
+                    features[k] = v
+            
+            # Predict
+            X = np.array([[features[f] for f in self.model['feature_names']]])
+            pred = self.model['model'].predict(X)[0]
+            profit = pred - budget
+            roi = (profit / budget * 100) if budget > 0 else 0
+            
+            result = f"""
+## 💰 Prediction Results
+- **Predicted Gross:** ${pred:,.0f}
+- **Budget:** ${budget:,.0f}
+- **Profit:** ${profit:,.0f}
+- **ROI:** {roi:.1f}%
 
-*Note: This prediction is based on a Random Forest model trained on {len(self.df)} movies.*
+*Using {self.model.get('model_name', 'Random Forest')} with {len(self.model['feature_names'])} features*
 """
             
-            # Create comparison plot
-            fig, ax = plt.subplots(figsize=(8, 5))
+            # Plot
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
+            ax1.bar(['Budget', 'Gross'], [budget, pred], color=['#FF6B6B', '#4ECDC4'])
+            ax1.set_title('Budget vs Predicted Gross')
+            ax1.set_ylabel('Amount ($)')
+            for i, v in enumerate([budget, pred]):
+                ax1.text(i, v, f'${v/1e6:.0f}M', ha='center', va='bottom')
             
-            categories = ['Budget', 'Predicted\nGross']
-            values = [budget, prediction]
-            colors = ['lightcoral', 'lightgreen']
-            
-            bars = ax.bar(categories, values, color=colors, edgecolor='black', linewidth=1.5)
-            ax.set_ylabel('Amount ($)')
-            ax.set_title('Budget vs Predicted Gross')
-            ax.grid(True, alpha=0.3, axis='y')
-            
-            # Add value labels on bars
-            for bar in bars:
-                height = bar.get_height()
-                ax.text(bar.get_x() + bar.get_width()/2., height,
-                       f'${height/1e6:.1f}M',
-                       ha='center', va='bottom', fontsize=12, fontweight='bold')
-            
+            ax2.barh(['ROI'], [roi], color='#45B7D1' if roi > 0 else '#FF6B6B')
+            ax2.set_xlabel('ROI (%)')
+            ax2.set_title('Return on Investment')
+            ax2.axvline(0, color='black', linestyle='--', linewidth=0.5)
             plt.tight_layout()
             
             return result, fig
-            
         except Exception as e:
-            return f"Error making prediction: {str(e)}", None
+            return f"❌ Error: {e}", None
     
-    def show_model_metrics(self):
-        """Display model performance metrics"""
-        if self.model_data is None:
-            return "Model not loaded"
+    # Tab 6: Model Comparison
+    def models_tab(self):
+        """Display all 7 models comparison"""
+        if self.comparison is None:
+            return "⚠️ Model comparison not available", None, None
         
-        metrics = self.model_data['metrics']
-        
-        result = f"""
-## Model Performance Metrics
+        summary = f"""
+## 🏆 Model Performance Comparison
+**{len(self.comparison)} models trained and evaluated**
 
-### Training Set
-- **R² Score:** {metrics['train']['r2']:.4f}
-- **MAE:** ${metrics['train']['mae']:,.0f}
-- **RMSE:** ${metrics['train']['rmse']:,.0f}
-
-### Test Set
-- **R² Score:** {metrics['test']['r2']:.4f}
-- **MAE:** ${metrics['test']['mae']:,.0f}
-- **RMSE:** ${metrics['test']['rmse']:,.0f}
-
----
-
-### Feature Importance (Top 5)
+### Top 3 Models
 """
+        for i, row in self.comparison.head(3).iterrows():
+            medal = ['🥇', '🥈', '🥉'][i]
+            summary += f"""
+{medal} **{row['Model']}**
+- Test R²: **{row['Test_R2']:.4f}** | MAE: ${row['Test_MAE']:,.0f}
+- Train R²: {row['Train_R2']:.4f} | Overfit: {row['Overfit']:.4f}
+"""
+        
+        # Plot comparison
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+        
+        models = self.comparison['Model'].values
+        test_r2 = self.comparison['Test_R2'].values
+        train_r2 = self.comparison['Train_R2'].values
+        
+        x = np.arange(len(models))
+        ax1.barh(x, test_r2, color='#4ECDC4', alpha=0.8, label='Test R²')
+        ax1.set_yticks(x)
+        ax1.set_yticklabels(models, fontsize=9)
+        ax1.set_xlabel('R² Score')
+        ax1.set_title('Test R² Comparison')
+        ax1.axvline(0.9, color='red', linestyle='--', alpha=0.3, label='0.9 threshold')
+        ax1.legend()
+        
+        ax2.scatter(train_r2, test_r2, s=100, alpha=0.6, c=range(len(models)), cmap='viridis')
+        ax2.plot([0.8, 1.0], [0.8, 1.0], 'r--', alpha=0.3, label='Perfect fit')
+        ax2.set_xlabel('Train R²')
+        ax2.set_ylabel('Test R²')
+        ax2.set_title('Overfitting Analysis')
+        ax2.legend()
+        for i, model in enumerate(models):
+            ax2.annotate(model, (train_r2[i], test_r2[i]), fontsize=7, alpha=0.7)
+        
+        plt.tight_layout()
+        
+        return summary, self.comparison, fig
+    
+    # Tab 7: Features
+    def features_tab(self):
+        """Feature engineering showcase"""
+        if not self.model or 'model' not in self.model:
+            return "⚠️ Feature importance not available", None
         
         # Get feature importance
-        feature_importance = pd.DataFrame({
-            'Feature': self.model_data['feature_names'],
-            'Importance': self.model_data['model'].feature_importances_
-        }).sort_values('Importance', ascending=False)
-        
-        for idx, row in feature_importance.head(5).iterrows():
-            result += f"\n{idx+1}. **{row['Feature']}**: {row['Importance']:.4f}"
-        
-        return result
-    
-    def create_interface(self):
-        """Create Gradio interface"""
-        
-        # Get available genres
-        if self.df is not None:
-            genres = sorted(self.df['Primary_Genre'].unique().tolist())
-        else:
-            genres = ['Action', 'Drama', 'Comedy', 'Thriller', 'Adventure']
-        
-        with gr.Blocks(title="Box Office Prediction", theme=gr.themes.Soft()) as app:
+        if hasattr(self.model['model'], 'feature_importances_'):
+            importances = self.model['model'].feature_importances_
+            feat_df = pd.DataFrame({
+                'Feature': self.model['feature_names'],
+                'Importance': importances
+            }).sort_values('Importance', ascending=False).head(20)
             
-            gr.Markdown("# 🎬 Box Office Revenue Prediction System")
-            gr.Markdown("Predict movie box office performance using machine learning")
+            summary = f"""
+## 🔧 Feature Engineering
+**Total Features:** {len(self.model['feature_names'])}
+
+### Feature Categories Created
+1. **Temporal** (9): Release_Month, Quarter, DayOfWeek, Is_Summer, Is_Holiday, Is_Awards_Season, Decade, Movie_Age
+2. **Budget** (5): Log_Budget, Budget_Tier, Budget_Percentile, Budget_Per_Genre, Is_High_Budget
+3. **Content** (10+): Genre binaries, Is_Franchise, Is_Sequel, Is_Adaptation, Has_Superhero
+4. **Star Power** (6): Has_A_List_Actor, Has_A_List_Director, Top_Actor_Count, Director/Actor Avg Gross
+5. **Studio** (3): Is_Major_Studio, Studio_Avg_Gross, Studio_Count
+6. **Rating** (8): MPAA_Encoded, Is_Family_Friendly, Target_Audience, Rating_Bucket, Is_Highly_Rated
+7. **Geographic** (6): Is_English, Is_Multilingual, Is_US_Production, Primary_Country, Market_Reach
+8. **Ratios** (4): Budget_Runtime_Ratio, Cast_to_Budget_Ratio, Keyword_Density, Production_Scale
+
+### Top 20 Most Important Features
+"""
+            
+            # Plot
+            fig, ax = plt.subplots(figsize=(10, 8))
+            colors = plt.cm.viridis(np.linspace(0, 1, len(feat_df)))
+            ax.barh(range(len(feat_df)), feat_df['Importance'], color=colors)
+            ax.set_yticks(range(len(feat_df)))
+            ax.set_yticklabels(feat_df['Feature'], fontsize=9)
+            ax.set_xlabel('Importance')
+            ax.set_title('Top 20 Feature Importance')
+            ax.invert_yaxis()
+            plt.tight_layout()
+            
+            return summary, feat_df, fig
+        else:
+            return "⚠️ Model doesn't support feature importance", None, None
+    
+    # Build Interface
+    def build(self):
+        """Create Gradio interface"""
+        with gr.Blocks(title="🎬 Box Office Prediction", theme=gr.themes.Soft()) as app:
             
             with gr.Tabs():
+                # Tab 1: Overview
+                with gr.Tab("🏠 Overview"):
+                    gr.Markdown(self.overview_tab())
                 
-                # Tab 1: Predictions
-                with gr.Tab("🎯 Make Prediction"):
-                    gr.Markdown("### Enter Movie Details")
+                # Tab 2: Data Quality
+                with gr.Tab("📊 Data Quality"):
+                    gr.HTML(self.quality_tab())
+                
+                # Tab 3: EDA
+                with gr.Tab("📈 EDA"):
+                    gr.Markdown("## Exploratory Data Analysis\n**25+ visualizations generated**")
+                    plot_files = self.eda_tab()
                     
+                    gr.Markdown("### Distribution Analysis")
+                    with gr.Row():
+                        for img in plot_files['distributions']:
+                            gr.Image(value=load_image(img), label=img.stem)
+                    
+                    gr.Markdown("### Relationship Analysis")
+                    with gr.Row():
+                        for img in plot_files['relationships']:
+                            gr.Image(value=load_image(img), label=img.stem)
+                    
+                    gr.Markdown("### Categorical Analysis")
+                    with gr.Row():
+                        for img in plot_files['categorical']:
+                            gr.Image(value=load_image(img), label=img.stem)
+                    
+                    gr.Markdown("### Time Series Analysis")
+                    with gr.Row():
+                        for img in plot_files['time_series']:
+                            gr.Image(value=load_image(img), label=img.stem)
+                
+                # Tab 4: Statistics
+                with gr.Tab("🔬 Statistics"):
+                    stats_md, stats_df, corr_md, vif_df = self.stats_tab()
+                    gr.Markdown(stats_md)
+                    if stats_df is not None:
+                        gr.Dataframe(stats_df, interactive=False)
+                    gr.Markdown(corr_md)
+                    if vif_df is not None:
+                        gr.Dataframe(vif_df, interactive=False)
+                
+                # Tab 5: Prediction
+                with gr.Tab("🎯 Predict"):
+                    gr.Markdown("### Make Box Office Prediction")
                     with gr.Row():
                         with gr.Column():
-                            budget = gr.Number(label="Budget ($)", value=100000000)
-                            runtime = gr.Number(label="Runtime (minutes)", value=120)
-                            rating = gr.Slider(0, 10, value=7.5, label="IMDb Rating")
-                            rating_count = gr.Number(label="Number of Ratings", value=500000)
-                            release_year = gr.Number(label="Release Year", value=2024)
-                            primary_genre = gr.Dropdown(choices=genres, label="Primary Genre", value=genres[0])
-                        
+                            budget = gr.Number(label="Budget ($)", value=50000000, minimum=0)
+                            runtime = gr.Number(label="Runtime (min)", value=120, minimum=40, maximum=300)
+                            rating = gr.Slider(label="IMDb Rating", minimum=1, maximum=10, value=7.0, step=0.1)
+                            rating_count = gr.Number(label="Rating Count", value=100000, minimum=0)
                         with gr.Column():
-                            cast_count = gr.Slider(1, 50, value=10, step=1, label="Number of Cast Members")
-                            crew_count = gr.Slider(1, 50, value=15, step=1, label="Number of Crew Members")
-                            genre_count = gr.Slider(1, 5, value=2, step=1, label="Number of Genres")
-                            keywords_count = gr.Slider(0, 100, value=20, step=1, label="Number of Keywords")
-                            languages_count = gr.Slider(1, 10, value=1, step=1, label="Number of Languages")
-                            countries_count = gr.Slider(1, 10, value=1, step=1, label="Number of Countries")
+                            is_franchise = gr.Checkbox(label="Part of Franchise", value=False)
+                            has_actor = gr.Checkbox(label="Has A-List Actor", value=False)
+                            is_summer = gr.Checkbox(label="Summer Release", value=False)
+                            is_studio = gr.Checkbox(label="Major Studio", value=True)
                     
-                    predict_btn = gr.Button("Predict Box Office Gross", variant="primary", size="lg")
-                    
-                    with gr.Row():
-                        prediction_output = gr.Markdown()
-                        prediction_plot = gr.Plot()
+                    predict_btn = gr.Button("🎬 Predict", variant="primary")
+                    pred_output = gr.Markdown()
+                    pred_plot = gr.Plot()
                     
                     predict_btn.click(
-                        fn=self.predict_gross,
-                        inputs=[budget, runtime, rating, rating_count, cast_count, crew_count,
-                               genre_count, keywords_count, languages_count, countries_count,
-                               release_year, primary_genre],
-                        outputs=[prediction_output, prediction_plot]
+                        self.predict,
+                        [budget, runtime, rating, rating_count, is_franchise, has_actor, is_summer, is_studio],
+                        [pred_output, pred_plot]
                     )
                 
-                # Tab 2: EDA Visualizations
-                with gr.Tab("📊 Exploratory Analysis"):
-                    gr.Markdown("### Data Visualizations")
-                    
-                    with gr.Row():
-                        with gr.Column():
-                            gr.Markdown("#### Gross Distribution")
-                            if self.visualizer.df is not None:
-                                fig1 = self.visualizer.plot_gross_distribution()
-                                gr.Plot(value=fig1)
-                                plt.close(fig1)
-                        
-                        with gr.Column():
-                            gr.Markdown("#### Budget vs Gross")
-                            if self.visualizer.df is not None:
-                                fig2 = self.visualizer.plot_budget_vs_gross()
-                                gr.Plot(value=fig2)
-                                plt.close(fig2)
-                    
-                    with gr.Row():
-                        gr.Markdown("#### Genre Analysis")
-                        if self.visualizer.df is not None:
-                            fig3 = self.visualizer.plot_genre_analysis()
-                            gr.Plot(value=fig3)
-                            plt.close(fig3)
-                    
-                    with gr.Row():
-                        gr.Markdown("#### Rating Analysis")
-                        if self.visualizer.df is not None:
-                            fig4 = self.visualizer.plot_rating_analysis()
-                            gr.Plot(value=fig4)
-                            plt.close(fig4)
+                # Tab 6: Models
+                with gr.Tab("🏆 Models"):
+                    summary, comp_df, comp_fig = self.models_tab()
+                    gr.Markdown(summary)
+                    if comp_df is not None:
+                        gr.Dataframe(comp_df, interactive=False)
+                    if comp_fig is not None:
+                        gr.Plot(comp_fig)
                 
-                # Tab 3: Model Metrics
-                with gr.Tab("📈 Model Performance"):
-                    gr.Markdown("### Model Evaluation Metrics")
-                    metrics_output = gr.Markdown(value=self.show_model_metrics())
-                    
-                    gr.Markdown("---")
-                    gr.Markdown("#### Correlation Heatmap")
-                    if self.visualizer.df is not None:
-                        fig5 = self.visualizer.plot_correlation_heatmap()
-                        gr.Plot(value=fig5)
-                        plt.close(fig5)
-                
-                # Tab 4: Dataset Info
-                with gr.Tab("ℹ️ Dataset Info"):
-                    gr.Markdown("### Dataset Overview")
-                    
-                    if self.df is not None:
-                        info_text = f"""
-**Total Movies:** {len(self.df)}
-
-**Features:** Budget, Runtime, Rating, Rating Count, Cast Count, Crew Count, 
-Genre Count, Keywords Count, Languages Count, Countries Count, Release Year, Primary Genre
-
-**Target Variable:** Gross Worldwide Revenue
-
-#### Sample Statistics
-"""
-                        gr.Markdown(info_text)
-                        
-                        # Show sample data
-                        sample_cols = ['Movie_Title', 'Budget', 'Gross_worldwide', 'Rating', 'Primary_Genre']
-                        if all(col in self.df.columns for col in sample_cols):
-                            sample_df = self.df[sample_cols].head(10)
-                            gr.Dataframe(value=sample_df)
-                    else:
-                        gr.Markdown("Dataset not loaded")
+                # Tab 7: Features
+                with gr.Tab("📚 Features"):
+                    feat_summary, feat_df, feat_fig = self.features_tab()
+                    gr.Markdown(feat_summary)
+                    if feat_df is not None:
+                        gr.Dataframe(feat_df, interactive=False)
+                    if feat_fig is not None:
+                        gr.Plot(feat_fig)
         
         return app
 
-
 def main():
-    """Run the application"""
+    """Launch app"""
     print("="*60)
-    print("STARTING BOX OFFICE PREDICTION APP")
+    print("🎬 COMPREHENSIVE BOX OFFICE PREDICTION DEMO")
     print("="*60)
-    
-    app = BoxOfficeApp()
-    interface = app.create_interface()
-    
-    print("\nLaunching Gradio interface...")
-    interface.launch(share=False, server_name="0.0.0.0", server_port=7860)
-
+    demo = BoxOfficeDemo()
+    app = demo.build()
+    print("\n✓ Launching at http://localhost:7860")
+    app.launch(server_name="0.0.0.0", server_port=7860, share=False)
 
 if __name__ == "__main__":
     main()
