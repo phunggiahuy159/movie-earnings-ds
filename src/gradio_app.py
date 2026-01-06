@@ -284,24 +284,9 @@ Linear Regression • Ridge • Lasso • ElasticNet • Decision Tree • Rando
 Central tendency and dispersion for key features
 """
         
-        # Correlation heatmap - Filter out columns with too many NaNs
-        numeric_cols = self.df.select_dtypes(include=[np.number]).columns
-        
-        # Keep only columns with less than 50% missing values
-        valid_cols = []
-        for col in numeric_cols:
-            missing_pct = (self.df[col].isnull().sum() / len(self.df)) * 100
-            if missing_pct < 50:  # Keep if less than 50% missing
-                valid_cols.append(col)
-        
-        # Limit to top 15 columns with most variance (most interesting)
-        if len(valid_cols) > 15:
-            # Calculate variance for each column
-            variances = self.df[valid_cols].var().sort_values(ascending=False)
-            valid_cols = variances.head(15).index.tolist()
-        
-        # Create correlation matrix
-        corr_matrix = self.df[valid_cols].corr()
+        # Correlation heatmap using Plotly
+        numeric_cols = self.df.select_dtypes(include=[np.number]).columns[:15]
+        corr_matrix = self.df[numeric_cols].corr()
         
         fig = go.Figure(data=go.Heatmap(
             z=corr_matrix.values,
@@ -317,7 +302,7 @@ Central tendency and dispersion for key features
         ))
         
         fig.update_layout(
-            title=f"Feature Correlation Matrix ({len(valid_cols)} features, <50% missing)",
+            title="Feature Correlation Matrix (Interactive)",
             xaxis_title="Features",
             yaxis_title="Features",
             height=700,
