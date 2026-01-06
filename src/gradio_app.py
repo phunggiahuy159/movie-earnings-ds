@@ -548,11 +548,161 @@ Central tendency and dispersion for key features
         
         return summary, self.comparison, fig
     
-    # Tab 7: Feature Importance
+    # Tab 7: Feature Importance with Detailed Explanations
     def features_tab(self):
-        """Feature engineering showcase with enhanced interactive charts"""
+        """Feature engineering showcase with comprehensive explanations"""
         if not self.model or 'model' not in self.model:
-            return "⚠️ Feature importance not available", None, None
+            return "⚠️ Feature importance not available", None, None, None
+        
+        # Feature Dictionary - Comprehensive explanations
+        feature_dictionary = """
+## 📖 Complete Feature Engineering Dictionary
+
+---
+
+## 🔍 Part 1: Raw Features (17 fields scraped from IMDb)
+
+These are the original fields collected using **Scrapy + Playwright** from IMDb movie pages.
+
+### Core Identifiers & Metadata
+| Field | Description | Example | Where Scraped From |
+|-------|-------------|---------|-------------------|
+| **Movie_ID** | IMDb unique identifier | tt0111161 | URL slug |
+| **Movie_Title** | Full movie title | "The Shawshank Redemption" | `<h1>` tag |
+| **Release_Year** | Year of theatrical release | 1994 | Title metadata |
+| **Release_Data** | Full release date | "1994-09-23" | Release info section |
+
+### Financial Data
+| Field | Description | Example | Data Source |
+|-------|-------------|---------|-------------|
+| **Budget** | Production budget (USD) | $25,000,000 | Box office section |
+| **Gross_worldwide** | Total worldwide box office | $28,341,469 | Box office totals |
+| **Gross_usa** | US/Canada box office | $28,341,469 | Domestic gross |
+
+### Content Information
+| Field | Description | Example | Extraction Method |
+|-------|-------------|---------|------------------|
+| **Genre** | Comma-separated genres | "Drama, Crime" | Genre tags |
+| **Runtime** | Duration in minutes | 142 | Tech specs |
+| **ListOfCertificate** | MPAA/age ratings | "R, 15, 16" | Certificates section |
+| **Languages** | Audio languages | "English" | Language list |
+| **Countries** | Production countries | "United States" | Country of origin |
+
+### People & Studios
+| Field | Description | Example | XPath/Selector |
+|-------|-------------|---------|----------------|
+| **Cast** | Main cast members (comma-sep) | "Tim Robbins, Morgan Freeman, Bob Gunton" | Cast list (top 15) |
+| **Crew** | Directors & key crew | "Frank Darabont, Roger Deakins" | Credits section |
+| **Studios** | Production companies | "Castle Rock Entertainment, Columbia Pictures" | Production companies |
+
+### Engagement Metrics
+| Field | Description | Example | API/Scraping |
+|-------|-------------|---------|--------------|
+| **Rating** | IMDb user rating (0-10) | 9.3 | Rating display |
+| **Rating_Count** | Number of user ratings | 2,744,891 | Vote count |
+| **Keywords** | Plot keywords | "prison, friendship, hope, escape" | Keywords section |
+
+### Technical Notes
+- **Data Collection:** Scrapy framework with Playwright for JavaScript rendering
+- **Pagination:** "50 more" button clicks to load full cast/crew
+- **Anti-Bot:** AUTOTHROTTLE + User-Agent rotation
+- **Data Format:** JSON Lines (.jsonl) → CSV conversion
+- **Missing Values:** Common in Budget (~40%), Gross (~25%), Keywords (~15%)
+
+---
+
+## 🔧 Part 2: Engineered Features (52+ features created)
+
+From the 17 raw fields above, we engineered 52+ predictive features using domain knowledge.
+
+### 🕐 Temporal Features (8 features)
+| Feature | Description | Example Values |
+|---------|-------------|----------------|
+| **Release_Month** | Month of release (1-12) | 5 = May, 12 = December |
+| **Release_Quarter** | Quarter of release (1-4) | 2 = Q2 (Apr-Jun) |
+| **Release_DayOfWeek** | Day of week (0-6) | 4 = Friday |
+| **Is_Summer_Release** | Released May-August (1/0) | 1 = Summer blockbuster season |
+| **Is_Holiday_Release** | Released Nov-Dec (1/0) | 1 = Holiday season |
+| **Is_Awards_Season** | Released Jan-Feb (1/0) | 1 = Oscar bait timing |
+| **Decade** | Release decade | 2020, 2010, 2000 |
+| **Movie_Age** | Years since release | Current year - Release year |
+
+### 💰 Budget & Financial Features (5 features)
+| Feature | Description | Rationale |
+|---------|-------------|-----------|
+| **Log_Budget** | log₁₀(Budget) | Normalizes extreme budget ranges |
+| **Budget_Tier** | Categorical tier | Micro/Low/Medium/High/Blockbuster |
+| **Is_High_Budget** | Budget > $100M (1/0) | Identifies tentpole films |
+| **Budget_Percentile** | Percentile rank (0-100) | Relative budget position |
+| **Budget_Per_Genre** | Budget / Genre Median | Identifies over/under-budgeted films |
+
+### 🎭 Content & Genre Features (12 features)
+| Feature | Description | Usage |
+|---------|-------------|-------|
+| **Is_Action** | Contains "Action" genre (1/0) | Binary genre indicator |
+| **Is_Comedy** | Contains "Comedy" genre (1/0) | Binary genre indicator |
+| **Is_Drama** | Contains "Drama" genre (1/0) | Binary genre indicator |
+| **Is_Thriller** | Contains "Thriller" genre (1/0) | Binary genre indicator |
+| **Is_Horror** | Contains "Horror" genre (1/0) | Binary genre indicator |
+| **Is_Animation** | Contains "Animation" genre (1/0) | Binary genre indicator |
+| **Is_SciFi** | Contains "Sci-Fi/Fantasy" (1/0) | Binary genre indicator |
+| **Genre_Popularity_Score** | Avg gross for primary genre | Historical genre performance |
+| **Is_Sequel** | Detected sequel patterns (1/0) | II, III, Part 2, Chapter 2, etc. |
+| **Is_Franchise** | Part of known franchise (1/0) | Marvel, Star Wars, Harry Potter, etc. |
+| **Is_Adaptation** | Based on novel/comic (1/0) | Derived from keywords |
+| **Has_Superhero** | Contains superhero elements (1/0) | Batman, Superman, Iron Man, etc. |
+
+### ⭐ Star Power Features (6 features)
+| Feature | Description | How Calculated |
+|---------|-------------|----------------|
+| **Top_Actor_Count** | Number of A-list actors | Count from 33-actor list |
+| **Has_A_List_Actor** | Has any A-list actor (1/0) | Leonardo DiCaprio, Tom Cruise, etc. |
+| **Has_A_List_Director** | Has A-list director (1/0) | Nolan, Spielberg, Cameron, etc. |
+| **Director_Avg_Gross** | Director's historical avg gross | Based on past films in dataset |
+| **Lead_Actor_Avg_Gross** | Lead actor's historical avg | Based on past films in dataset |
+| **First_Director** | Primary director name | Extracted from Crew |
+
+### 🏢 Studio Features (3 features)
+| Feature | Description | Major Studios |
+|---------|-------------|---------------|
+| **Is_Major_Studio** | From major studio (1/0) | Disney, Warner Bros, Universal, etc. |
+| **Studio_Avg_Gross** | Studio's historical avg gross | Track record indicator |
+| **Primary_Studio** | Lead production studio | First studio listed |
+
+### 🎫 Rating & Certification Features (7 features)
+| Feature | Description | Values |
+|---------|-------------|--------|
+| **MPAA_Encoded** | Numeric MPAA encoding | G=0, PG=1, PG-13=2, R=3, NC-17=4 |
+| **Is_Family_Friendly** | G or PG rated (1/0) | Target: children + families |
+| **Is_Adult_Only** | R or NC-17 rated (1/0) | Adult audiences only |
+| **Rating_Bucket** | IMDb rating category | Excel/Good/Average/Poor |
+| **Is_Highly_Rated** | IMDb ≥ 7.5 (1/0) | Quality indicator |
+| **Rating_Count_Log** | log₁₀(Rating Count) | Popularity measure |
+| **Is_Popular** | >100k IMDb ratings (1/0) | High engagement |
+
+### 🌍 Geographic Features (6 features)
+| Feature | Description | Market Impact |
+|---------|-------------|---------------|
+| **Is_English** | Contains English language (1/0) | Global market access |
+| **Is_Multilingual** | Multiple languages (1/0) | International appeal |
+| **Is_US_Production** | Made in USA (1/0) | Hollywood production |
+| **Is_International_Coproduction** | Multiple countries (1/0) | Cross-border production |
+| **Market_Reach_Score** | Languages × Countries | Geographic diversity |
+| **Primary_Country** | Lead production country | First country listed |
+
+### 📊 Derived Ratio Features (4 features)
+| Feature | Description | What It Measures |
+|---------|-------------|------------------|
+| **Budget_Runtime_Ratio** | Budget / Runtime ($/min) | Cost efficiency per minute |
+| **Cast_to_Budget_Ratio** | Cast Count / (Budget/1M) | Star power efficiency |
+| **Keyword_Density** | Keywords / Genres | Marketing intensity |
+| **Production_Scale** | Studios × Countries | Production complexity |
+
+---
+
+**Total Engineered Features:** 52+ features created from 17 raw fields  
+**Engineering Purpose:** Transform raw data into ML-ready predictive signals using domain knowledge
+"""
         
         # Get feature importance
         if hasattr(self.model['model'], 'feature_importances_'):
@@ -563,21 +713,12 @@ Central tendency and dispersion for key features
             }).sort_values('Importance', ascending=False).head(20)
             
             summary = f"""
-## 🔧 Feature Engineering
+## 🔧 Feature Engineering Overview
 
-**Total Features:** {len(self.model['feature_names'])}
+**Total Features Used:** {len(self.model['feature_names'])}  
+**Features Created:** 52+ engineered features from 17 raw IMDb fields
 
-### Feature Categories
-1. **Temporal** (9): Release_Month, Quarter, Is_Summer, Is_Holiday, etc.
-2. **Budget** (5): Log_Budget, Budget_Tier, Budget_Percentile, etc.
-3. **Content** (10+): Genre binaries, Is_Franchise, Is_Sequel, etc.
-4. **Star Power** (6): Has_A_List_Actor, Has_A_List_Director, etc.
-5. **Studio** (3): Is_Major_Studio, Studio_Avg_Gross, etc.
-6. **Rating** (8): MPAA_Encoded, Is_Family_Friendly, etc.
-7. **Geographic** (6): Is_English, Is_Multilingual, etc.
-8. **Ratios** (4): Budget_Runtime_Ratio, Cast_to_Budget_Ratio, etc.
-
-### Top 20 Important Features
+### 📈 Top 20 Most Important Features
 """
             
             # Enhanced feature importance chart
@@ -594,20 +735,20 @@ Central tendency and dispersion for key features
                 ),
                 text=feat_df['Importance'].round(4),
                 textposition='outside',
-                textfont=dict(size=10, color='black'),
+                textfont=dict(size=10),
                 hovertemplate='<b>%{y}</b><br>Importance: %{x:.4f}<extra></extra>'
             ))
             
             fig.update_layout(
-                title="Top 20 Feature Importance (Interactive)",
+                title="Top 20 Feature Importance (Interactive - Hover for Details)",
                 xaxis_title="Importance Score",
                 yaxis_title="Feature",
-                height=750,
+                height=700,
                 template="plotly_white",
                 yaxis=dict(autorange="reversed")
             )
             
-            return summary, feat_df, fig
+            return summary, feat_df, fig, feature_dictionary
         else:
             return "⚠️ Model doesn't support feature importance", None, None
     
@@ -726,8 +867,8 @@ Central tendency and dispersion for key features
                         gr.Plot(comp_fig)
                 
                 # Tab 7: Features
-                with gr.Tab("📚 Feature Importance"):
-                    feat_summary, feat_df, feat_fig = self.features_tab()
+                with gr.Tab("📚 Feature Engineering"):
+                    feat_summary, feat_df, feat_fig, feat_dict = self.features_tab()
                     gr.Markdown(feat_summary)
                     
                     if feat_df is not None:
@@ -735,6 +876,10 @@ Central tendency and dispersion for key features
                     
                     if feat_fig is not None:
                         gr.Plot(feat_fig)
+                    
+                    # Feature Dictionary
+                    if feat_dict:
+                        gr.Markdown(feat_dict)
             
             gr.Markdown("""
 ---
