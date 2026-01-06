@@ -150,85 +150,322 @@ Linear Regression • Ridge • Lasso • ElasticNet • Decision Tree • Rando
         
         return summary, missing_df, fig_missing, summary_stats
     
-    # Tab 3: Enhanced EDA with Interactive Plotly
-    def create_interactive_eda_plots(self):
-        """Generate interactive Plotly charts for EDA"""
+    # Tab 3: COMPREHENSIVE EDA - All Analysis Techniques
+    def create_comprehensive_eda(self):
+        """
+        Complete EDA following academic standards:
+        - Phase 1: Summary Statistics & Data Inspection
+        - Phase 2: Univariate Analysis
+        - Phase 3: Bivariate & Multivariate Analysis
+        - Phase 4: Temporal Analysis
+        - Phase 5: Categorical Analysis
+        - Phase 6: Outlier Detection
+        - Phase 7: Advanced Analytics (PCA, Clustering)
+        """
         if self.df is None:
-            return None, None, None, None
+            return {}
         
-        # 1. Distribution: Gross Revenue
-        fig_gross = go.Figure()
-        fig_gross.add_trace(go.Histogram(
-            x=self.df['Gross_worldwide'],
-            nbinsx=50,
-            marker_color='#3b82f6',
-            opacity=0.7,
-            name='Gross Revenue'
-        ))
-        fig_gross.update_layout(
-            title="Worldwide Gross Distribution",
-            xaxis_title="Gross Revenue ($)",
-            yaxis_title="Frequency",
-            template="plotly_white",
-            height=400,
-            hovermode='x'
+        eda_results = {}
+        
+        # ============ PHASE 1: SUMMARY STATISTICS ============
+        numeric_cols = self.df.select_dtypes(include=[np.number]).columns.tolist()
+        
+        # Summary stats table
+        summary_stats = self.df[numeric_cols].describe().T
+        summary_stats['skewness'] = self.df[numeric_cols].skew()
+        summary_stats['kurtosis'] = self.df[numeric_cols].kurtosis()
+        eda_results['summary_stats'] = summary_stats.round(2)
+        
+        # Missing values analysis
+        missing_df = pd.DataFrame({
+            'Column': self.df.columns,
+            'Missing_Count': self.df.isnull().sum(),
+            'Missing_Pct': (self.df.isnull().sum() / len(self.df) * 100).round(2),
+            'Data_Type': self.df.dtypes.astype(str)
+        }).sort_values('Missing_Pct', ascending=False)
+        eda_results['missing_analysis'] = missing_df
+        
+        # ============ PHASE 2: UNIVARIATE ANALYSIS ============
+        
+        # Distribution plots for key numeric features
+        key_features = ['Gross_worldwide', 'Budget', 'Runtime', 'Rating', 'Rating_Count']
+        available_features = [f for f in key_features if f in self.df.columns]
+        
+        # Create subplot for distributions
+        from plotly.subplots import make_subplots
+        n_features = len(available_features)
+        fig_distributions = make_subplots(
+            rows=n_features, cols=2,
+            subplot_titles=[f"{feat} - Histogram" if i%2==0 else f"{feat} - Box Plot" 
+                          for feat in available_features for i in range(2)],
+            vertical_spacing=0.08,
+            horizontal_spacing=0.12
         )
         
-        # 2. Relationship: Budget vs Gross
-        fig_budget_gross = px.scatter(
-            self.df.sample(min(1000, len(self.df))),
-            x='Budget',
-            y='Gross_worldwide',
-            trendline='ols',
-            color='Rating',
-            size='Rating_Count',
-            hover_data=['Movie_Title', 'Release_Year'],
-            color_continuous_scale='Viridis',
-            title="Budget vs Worldwide Gross (with Rating)"
-        )
-        fig_budget_gross.update_layout(
-            template="plotly_white",
-            height=500,
-            xaxis_title="Budget ($)",
-            yaxis_title="Worldwide Gross ($)"
-        )
-        
-        # 3. Categorical: Genre Performance
-        if 'Genre' in self.df.columns:
-            # Get top genres
-            genre_counts = self.df['Genre'].str.split(',').explode().str.strip().value_counts().head(10)
-            genre_gross = []
-            for genre in genre_counts.index:
-                avg_gross = self.df[self.df['Genre'].str.contains(genre, na=False)]['Gross_worldwide'].mean()
-                genre_gross.append({'Genre': genre, 'Avg_Gross': avg_gross, 'Count': genre_counts[genre]})
+        for idx, feature in enumerate(available_features, 1):
+            data = self.df[feature].dropna()
             
-            genre_df = pd.DataFrame(genre_gross).sort_values('Avg_Gross', ascending=False)
-            
-            fig_genre = go.Figure()
-            fig_genre.add_trace(go.Bar(
-                x=genre_df['Genre'],
-                y=genre_df['Avg_Gross'],
-                marker_color='#8b5cf6',
-                text=genre_df['Avg_Gross'].apply(lambda x: f'${x/1e6:.0f}M'),
-                textposition='outside',
-                hovertemplate='<b>%{x}</b><br>Avg Gross: $%{y:,.0f}<extra></extra>'
-            ))
-            fig_genre.update_layout(
-                title="Average Gross by Genre (Top 10)",
-                xaxis_title="Genre",
-                yaxis_title="Average Gross ($)",
-                template="plotly_white",
-                height=400
+            # Histogram
+            fig_distributions.add_trace(
+                go.Histogram(x=data, nbinsx=40, name=feature, marker_color='#3b82f6', showlegend=False),
+                row=idx, col=1
             )
-        else:
-            fig_genre = None
+            
+            # Box plot
+            fig_distributions.add_trace(
+                go.Box(y=data, name=feature, marker_color='#8b5cf6', showlegend=False),
+                row=idx, col=2
+            )
         
-        # 4. Temporal: Release Year Trends
-        yearly_stats = self.df.groupby('Release_Year').agg({
-            'Gross_worldwide': ['mean', 'count'],
-            'Budget': 'mean'
-        }).reset_index()
-        yearly_stats.columns = ['Year', 'Avg_Gross', 'Count', 'Avg_Budget']
+        fig_distributions.update_layout(
+            height=300 * n_features,
+            title_text="Univariate Analysis - Distributions & Outliers",
+            showlegend=False,
+            template="plotly_white"
+        )
+        eda_results['distributions'] = fig_distributions
+        
+        # ============ PHASE 3: CORRELATION & MULTIVARIATE ============
+        
+        # Correlation matrix
+        numeric_for_corr = self.df[numeric_cols].dropna()
+        if len(numeric_for_corr) > 0:
+            corr_matrix = numeric_for_corr.corr()
+            
+            fig_corr = go.Figure(data=go.Heatmap(
+                z=corr_matrix.values,
+                x=corr_matrix.columns,
+                y=corr_matrix.columns,
+                colorscale='RdBu_r',
+                zmid=0,
+                text=corr_matrix.values.round(2),
+                texttemplate='%{text}',
+                textfont={"size": 9},
+                colorbar=dict(title="Correlation"),
+                hovertemplate='%{x} vs %{y}<br>Correlation: %{z:.3f}<extra></extra>'
+            ))
+            
+            fig_corr.update_layout(
+                title="Correlation Heatmap - Multivariate Analysis",
+                height=700,
+                template="plotly_white"
+            )
+            eda_results['correlation'] = fig_corr
+        
+        # Scatter matrix for key features
+        scatter_features = ['Budget', 'Gross_worldwide', 'Rating', 'Runtime']
+        available_scatter = [f for f in scatter_features if f in self.df.columns]
+        if len(available_scatter) > 2:
+            scatter_df = self.df[available_scatter].dropna().sample(min(500, len(self.df)))
+            fig_scatter_matrix = px.scatter_matrix(
+                scatter_df,
+                dimensions=available_scatter,
+                title="Scatter Matrix - Pairwise Relationships",
+                height=800,
+                color=scatter_df['Rating'] if 'Rating' in scatter_df.columns else None,
+                color_continuous_scale='Viridis'
+            )
+            fig_scatter_matrix.update_traces(diagonal_visible=False, showupperhalf=False)
+            eda_results['scatter_matrix'] = fig_scatter_matrix
+        
+        # Budget vs Gross with trendline
+        if 'Budget' in self.df.columns and 'Gross_worldwide' in self.df.columns:
+            scatter_data = self.df.dropna(subset=['Budget', 'Gross_worldwide'])
+            fig_budget_gross = px.scatter(
+                scatter_data.sample(min(1000, len(scatter_data))),
+                x='Budget',
+                y='Gross_worldwide',
+                trendline='ols',
+                color='Rating' if 'Rating' in scatter_data.columns else None,
+                size='Rating_Count' if 'Rating_Count' in scatter_data.columns else None,
+                hover_data=['Movie_Title', 'Release_Year'] if 'Movie_Title' in scatter_data.columns else None,
+                title="Budget vs Worldwide Gross - Bivariate Analysis with OLS Trendline",
+                labels={'Budget': 'Production Budget ($)', 'Gross_worldwide': 'Worldwide Gross ($)'},
+                height=600,
+                color_continuous_scale='Viridis'
+            )
+            fig_budget_gross.update_layout(template="plotly_white")
+            eda_results['budget_vs_gross'] = fig_budget_gross
+        
+        # ============ PHASE 4: TEMPORAL ANALYSIS ============
+        
+        if 'Release_Year' in self.df.columns:
+            temporal_df = self.df.dropna(subset=['Release_Year', 'Gross_worldwide'])
+            
+            # Yearly trends
+            yearly_agg = temporal_df.groupby('Release_Year').agg({
+                'Gross_worldwide': ['mean', 'median', 'count'],
+                'Budget': 'mean' if 'Budget' in temporal_df.columns else 'count'
+            }).reset_index()
+            yearly_agg.columns = ['Year', 'Mean_Gross', 'Median_Gross', 'Count', 'Mean_Budget']
+            
+            fig_temporal = make_subplots(
+                rows=2, cols=1,
+                subplot_titles=("Revenue Trends Over Time", "Number of Releases per Year"),
+                vertical_spacing=0.12
+            )
+            
+            # Revenue trends
+            fig_temporal.add_trace(
+                go.Scatter(x=yearly_agg['Year'], y=yearly_agg['Mean_Gross'], 
+                          mode='lines+markers', name='Mean Gross', line=dict(color='#3b82f6', width=2)),
+                row=1, col=1
+            )
+            fig_temporal.add_trace(
+                go.Scatter(x=yearly_agg['Year'], y=yearly_agg['Median_Gross'], 
+                          mode='lines+markers', name='Median Gross', line=dict(color='#10b981', width=2)),
+                row=1, col=1
+            )
+            
+            # Release count
+            fig_temporal.add_trace(
+                go.Bar(x=yearly_agg['Year'], y=yearly_agg['Count'], 
+                      name='Release Count', marker_color='#f59e0b'),
+                row=2, col=1
+            )
+            
+            fig_temporal.update_layout(
+                title_text="Temporal Analysis - Time Series Trends",
+                height=700,
+                template="plotly_white",
+                showlegend=True
+            )
+            fig_temporal.update_xaxes(title_text="Year", row=2, col=1)
+            fig_temporal.update_yaxes(title_text="Gross ($)", row=1, col=1)
+            fig_temporal.update_yaxes(title_text="Count", row=2, col=1)
+            
+            eda_results['temporal'] = fig_temporal
+        
+        # ============ PHASE 5: CATEGORICAL ANALYSIS ============
+        
+        # Genre analysis
+        if 'Genre' in self.df.columns:
+            genre_df = self.df.dropna(subset=['Genre', 'Gross_worldwide'])
+            genres = genre_df['Genre'].str.split(',').explode().str.strip()
+            genre_counts = genres.value_counts().head(15)
+            
+            # Calculate mean gross per genre
+            genre_performance = []
+            for genre in genre_counts.index:
+                if pd.notna(genre) and genre:
+                    genre_movies = genre_df[genre_df['Genre'].str.contains(genre, na=False)]
+                    genre_performance.append({
+                        'Genre': genre,
+                        'Count': len(genre_movies),
+                        'Mean_Gross': genre_movies['Gross_worldwide'].mean(),
+                        'Median_Gross': genre_movies['Gross_worldwide'].median()
+                    })
+            
+            genre_perf_df = pd.DataFrame(genre_performance).sort_values('Mean_Gross', ascending=False)
+            
+            fig_genre = make_subplots(
+                rows=1, cols=2,
+                subplot_titles=("Genre Frequency", "Average Gross by Genre"),
+                specs=[[{"type": "bar"}, {"type": "bar"}]]
+            )
+            
+            # Frequency
+            fig_genre.add_trace(
+                go.Bar(y=genre_counts.index, x=genre_counts.values, orientation='h',
+                      marker_color='#8b5cf6', name='Count'),
+                row=1, col=1
+            )
+            
+            # Performance
+            fig_genre.add_trace(
+                go.Bar(y=genre_perf_df['Genre'], x=genre_perf_df['Mean_Gross'], orientation='h',
+                      marker_color='#10b981', name='Mean Gross',
+                      text=genre_perf_df['Mean_Gross'].apply(lambda x: f'${x/1e6:.0f}M'),
+                      textposition='outside'),
+                row=1, col=2
+            )
+            
+            fig_genre.update_layout(
+                title_text="Categorical Analysis - Genre Performance",
+                height=500,
+                template="plotly_white",
+                showlegend=False
+            )
+            fig_genre.update_yaxes(categoryorder='total ascending', row=1, col=1)
+            fig_genre.update_yaxes(categoryorder='total ascending', row=1, col=2)
+            
+            eda_results['genre_analysis'] = fig_genre
+        
+        # ============ PHASE 6: OUTLIER DETECTION ============
+        
+        # IQR method for outlier detection
+        outlier_summary = []
+        for col in ['Gross_worldwide', 'Budget', 'Runtime', 'Rating_Count']:
+            if col in self.df.columns:
+                data = self.df[col].dropna()
+                Q1 = data.quantile(0.25)
+                Q3 = data.quantile(0.75)
+                IQR = Q3 - Q1
+                lower_bound = Q1 - 1.5 * IQR
+                upper_bound = Q3 + 1.5 * IQR
+                outliers = data[(data < lower_bound) | (data > upper_bound)]
+                
+                outlier_summary.append({
+                    'Feature': col,
+                    'Total_Records': len(data),
+                    'Outliers_Count': len(outliers),
+                    'Outliers_Pct': f"{len(outliers)/len(data)*100:.2f}%",
+                    'Lower_Bound': f"{lower_bound:,.0f}",
+                    'Upper_Bound': f"{upper_bound:,.0f}"
+                })
+        
+        eda_results['outlier_summary'] = pd.DataFrame(outlier_summary)
+        
+        # ============ PHASE 7: ADVANCED ANALYTICS ============
+        
+        # PCA for dimensionality reduction (visualize in 2D)
+        try:
+            from sklearn.decomposition import PCA
+            from sklearn.preprocessing import StandardScaler
+            
+            # Select numeric features for PCA
+            pca_features = [f for f in numeric_cols if f in self.df.columns][:10]
+            pca_df = self.df[pca_features].dropna()
+            
+            if len(pca_df) > 50:
+                # Standardize
+                scaler = StandardScaler()
+                scaled_data = scaler.fit_transform(pca_df)
+                
+                # Apply PCA
+                pca = PCA(n_components=2)
+                pca_result = pca.fit_transform(scaled_data)
+                
+                # Plot
+                fig_pca = go.Figure()
+                fig_pca.add_trace(go.Scatter(
+                    x=pca_result[:, 0],
+                    y=pca_result[:, 1],
+                    mode='markers',
+                    marker=dict(
+                        size=5,
+                        color=self.df.loc[pca_df.index, 'Rating'] if 'Rating' in self.df.columns else None,
+                        colorscale='Viridis',
+                        showscale=True,
+                        colorbar=dict(title="Rating")
+                    ),
+                    text=self.df.loc[pca_df.index, 'Movie_Title'] if 'Movie_Title' in self.df.columns else None,
+                    hovertemplate='<b>%{text}</b><br>PC1: %{x:.2f}<br>PC2: %{y:.2f}<extra></extra>'
+                ))
+                
+                fig_pca.update_layout(
+                    title=f"PCA - 2D Projection (Explained Variance: {pca.explained_variance_ratio_.sum()*100:.1f}%)",
+                    xaxis_title=f"PC1 ({pca.explained_variance_ratio_[0]*100:.1f}%)",
+                    yaxis_title=f"PC2 ({pca.explained_variance_ratio_[1]*100:.1f}%)",
+                    height=600,
+                    template="plotly_white"
+                )
+                
+                eda_results['pca'] = fig_pca
+        except Exception as e:
+            print(f"PCA skipped: {e}")
+        
+        return eda_results
         
         fig_temporal = make_subplots(
             rows=2, cols=1,
@@ -785,27 +1022,71 @@ From the 17 raw fields above, we engineered 52+ predictive features using domain
                     if stats_df is not None:
                         gr.Dataframe(stats_df, interactive=False)
                 
-                # Tab 3: EDA - ENHANCED with Interactive Plotly
-                with gr.Tab("📈 Exploratory Analysis"):
-                    gr.Markdown("## 📈 Exploratory Data Analysis\n**Interactive visualizations - zoom, pan, and hover for details**")
+                # Tab 3: EDA - COMPREHENSIVE Academic Analysis
+                with gr.Tab("📈 Exploratory Data Analysis"):
+                    gr.Markdown("""
+## 📈 Comprehensive Exploratory Data Analysis
+**7-Phase Academic EDA Following HUST Standards**
+
+All visualizations are interactive - zoom, pan, and hover for detailed insights.
+""")
                     
-                    fig_gross, fig_budget_gross, fig_genre, fig_temporal = self.create_interactive_eda_plots()
+                    eda_results = self.create_comprehensive_eda()
                     
-                    with gr.Row():
-                        with gr.Column():
-                            if fig_gross:
-                                gr.Plot(fig_gross)
-                        with gr.Column():
-                            if fig_budget_gross:
-                                gr.Plot(fig_budget_gross)
-                    
-                    with gr.Row():
-                        if fig_genre:
-                            gr.Plot(fig_genre)
-                    
-                    with gr.Row():
-                        if fig_temporal:
-                            gr.Plot(fig_temporal)
+                    if eda_results:
+                        # Phase 1: Summary Statistics
+                        with gr.Accordion("📊 Phase 1: Summary Statistics & Data Inspection", open=True):
+                            if 'summary_stats' in eda_results:
+                                gr.Markdown("### Statistical Summary (Mean, Std, Skewness, Kurtosis)")
+                                gr.Dataframe(eda_results['summary_stats'], interactive=False)
+                            
+                            if 'missing_analysis' in eda_results:
+                                gr.Markdown("### Missing Values Analysis")
+                                gr.Dataframe(eda_results['missing_analysis'], interactive=False)
+                        
+                        # Phase 2: Univariate Analysis
+                        with gr.Accordion("📊 Phase 2: Univariate Analysis (Distributions)", open=True):
+                            gr.Markdown("### Histograms & Box Plots for Key Features")
+                            if 'distributions' in eda_results:
+                                gr.Plot(eda_results['distributions'])
+                        
+                        # Phase 3: Correlation & Multivariate
+                        with gr.Accordion("🔗 Phase 3: Bivariate & Multivariate Analysis", open=False):
+                            if 'correlation' in eda_results:
+                                gr.Markdown("### Correlation Heatmap")
+                                gr.Plot(eda_results['correlation'])
+                            
+                            if 'scatter_matrix' in eda_results:
+                                gr.Markdown("### Scatter Matrix - Pairwise Relationships")
+                                gr.Plot(eda_results['scatter_matrix'])
+                            
+                            if 'budget_vs_gross' in eda_results:
+                                gr.Markdown("### Budget vs Gross with OLS Trendline")
+                                gr.Plot(eda_results['budget_vs_gross'])
+                        
+                        # Phase 4: Temporal
+                        with gr.Accordion("⏰ Phase 4: Temporal Analysis (Time Series)", open=False):
+                            if 'temporal' in eda_results:
+                                gr.Markdown("### Revenue Trends Over Time")
+                                gr.Plot(eda_results['temporal'])
+                        
+                        # Phase 5: Categorical
+                        with gr.Accordion("🎭 Phase 5: Categorical Analysis", open=False):
+                            if 'genre_analysis' in eda_results:
+                                gr.Markdown("### Genre Performance Analysis")
+                                gr.Plot(eda_results['genre_analysis'])
+                        
+                        # Phase 6: Outlier Detection
+                        with gr.Accordion("🔍 Phase 6: Outlier Detection (IQR Method)", open=False):
+                            if 'outlier_summary' in eda_results:
+                                gr.Markdown("""
+### Outlier Analysis Using IQR Method
+
+**Method:** IQR = Q3 - Q1, Outliers fall outside [Q1 - 1.5×IQR, Q3 + 1.5×IQR]
+""")
+                                gr.Dataframe(eda_results['outlier_summary'], interactive=False)
+                    else:
+                        gr.Markdown("⚠️ EDA results not available")
                 
                 # Tab 4: Statistics
                 with gr.Tab("🔬 Statistical Analysis"):
