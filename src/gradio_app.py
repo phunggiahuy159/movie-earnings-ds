@@ -46,7 +46,8 @@ class BoxOfficeDemo:
         self.model = load_pickle('models/box_office_model.pkl')
         self.df = load_csv('dataset/data_cleaned.csv')
         self.comparison = load_csv('demo/model_comparison.csv')
-        self.stats = load_csv('demo/stats_summary.csv')
+        # Load stats with Feature as index column
+        self.stats = pd.read_csv('demo/stats_summary.csv', index_col=0) if Path('demo/stats_summary.csv').exists() else None
         
         if self.df is not None and self.model is not None:
             print(f"✓ Loaded: {len(self.df)} movies, {len(self.model['feature_names'])} features")
@@ -523,8 +524,11 @@ Central tendency and dispersion for key features
 """
         
         # Correlation heatmap using Plotly
-        numeric_cols = self.df.select_dtypes(include=[np.number]).columns[:15]
-        corr_matrix = self.df[numeric_cols].corr()
+        # Exclude columns with all NaN values (like ListOfCertificate)
+        numeric_cols = self.df.select_dtypes(include=[np.number]).columns
+        # Filter out columns with all NaN or ListOfCertificate
+        valid_cols = [col for col in numeric_cols if col not in ['ListOfCertificate', 'MPAA_Encoded'] and self.df[col].notna().sum() > 0][:15]
+        corr_matrix = self.df[valid_cols].corr()
         
         fig = go.Figure(data=go.Heatmap(
             z=corr_matrix.values,
