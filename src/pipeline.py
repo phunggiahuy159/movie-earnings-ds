@@ -58,13 +58,37 @@ class BoxOfficePipeline:
         df['Budget'] = df['Budget'].apply(parse_money)
         df['Gross_worldwide'] = df['Gross_worldwide'].apply(parse_money)
         
-        # Parse Runtime - extract minutes
+        # Parse Runtime - handle ISO 8601 format (PT1H30M)
         def parse_runtime(value):
+            """Parse ISO 8601 duration format (PT1H30M) to minutes"""
             if pd.isna(value):
                 return np.nan
-            match = re.search(r'(\d+)', str(value))
+            
+            value_str = str(value).strip()
+            
+            # Handle ISO 8601 format: PT2H35M or PT90M or PT3H
+            if value_str.startswith('PT'):
+                hours = 0
+                minutes = 0
+                
+                # Extract hours
+                hour_match = re.search(r'(\d+)H', value_str)
+                if hour_match:
+                    hours = int(hour_match.group(1))
+                
+                # Extract minutes
+                min_match = re.search(r'(\d+)M', value_str)
+                if min_match:
+                    minutes = int(min_match.group(1))
+                
+                total_minutes = hours * 60 + minutes
+                return total_minutes if total_minutes > 0 else np.nan
+            
+            # Fallback: extract first number (for already-parsed values)
+            match = re.search(r'(\d+)', value_str)
             if match:
                 return int(match.group(1))
+            
             return np.nan
         
         df['Runtime'] = df['Runtime'].apply(parse_runtime)
@@ -251,12 +275,12 @@ class BoxOfficePipeline:
                 print(f"  - Fixing {invalid_ratings} invalid ratings")
                 self.df_clean.loc[(self.df_clean['Rating'] < 0) | (self.df_clean['Rating'] > 10), 'Rating'] = np.nan
         
-        # Runtime should be 40-300 minutes
+        # Runtime should be 40-300 minutes (feature films only)
         if 'Runtime' in self.df_clean.columns:
             invalid_runtime = ((self.df_clean['Runtime'] < 40) | (self.df_clean['Runtime'] > 300)).sum()
             if invalid_runtime > 0:
-                print(f"  - Capping {invalid_runtime} invalid runtimes")
-                self.df_clean['Runtime'] = self.df_clean['Runtime'].clip(lower=40, upper=300)
+                print(f"  - Setting {invalid_runtime} invalid runtimes to NaN (short films/TV specials/errors)")
+                self.df_clean.loc[(self.df_clean['Runtime'] < 40) | (self.df_clean['Runtime'] > 300), 'Runtime'] = np.nan
         
         # Budget and Gross should be positive
         for col in ['Budget', 'Gross_worldwide']:

@@ -47,7 +47,6 @@ class BoxOfficeDemo:
         self.df = load_csv('dataset/data_cleaned.csv')
         self.comparison = load_csv('demo/model_comparison.csv')
         self.stats = load_csv('demo/stats_summary.csv')
-        self.vif = load_csv('demo/vif_report.csv')
         
         if self.df is not None and self.model is not None:
             print(f"✓ Loaded: {len(self.df)} movies, {len(self.model['feature_names'])} features")
@@ -1092,7 +1091,7 @@ All visualizations are interactive - zoom, pan, and hover for detailed insights.
                 
                 # Tab 4: Statistics
                 with gr.Tab("🔬 Statistical Analysis"):
-                    stats_md, stats_df, corr_fig, vif_md, vif_df = self.stats_tab()
+                    stats_md, stats_df, corr_fig = self.stats_tab()
                     gr.Markdown(stats_md)
                     if stats_df is not None:
                         gr.Dataframe(stats_df, interactive=False)
@@ -1100,10 +1099,6 @@ All visualizations are interactive - zoom, pan, and hover for detailed insights.
                     gr.Markdown("### Interactive Correlation Matrix")
                     if corr_fig is not None:
                         gr.Plot(corr_fig)
-                    
-                    gr.Markdown(vif_md)
-                    if vif_df is not None:
-                        gr.Dataframe(vif_df, interactive=False)
                 
                 # Tab 5: Prediction
                 with gr.Tab("🎯 Make Prediction"):
