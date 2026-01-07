@@ -513,7 +513,7 @@ Linear Regression • Ridge • Lasso • ElasticNet • Decision Tree • Rando
     def stats_tab(self):
         """Display statistical analysis with interactive heatmap"""
         if self.df is None:
-            return "⚠️ Data not loaded", None, None, None, None
+            return "⚠️ Data not loaded", None, None
         
         stats_md = """
 ## 📊 Statistical Analysis
@@ -547,16 +547,7 @@ Central tendency and dispersion for key features
             template="plotly_white"
         )
         
-        vif_md = """
-### Multicollinearity Check (VIF)
-
-**Interpretation:**
-- VIF < 5: ✅ Low multicollinearity  
-- VIF 5-10: ⚠️ Moderate multicollinearity  
-- VIF > 10: ❌ High multicollinearity
-"""
-        
-        return stats_md, self.stats, fig, vif_md, self.vif
+        return stats_md, self.stats, fig
     
     # Tab 5: Prediction
     def predict(self, budget, runtime, rating, rating_count, genre, is_franchise, has_actor, is_summer, is_studio):
