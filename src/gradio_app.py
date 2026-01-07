@@ -147,6 +147,7 @@ Linear Regression • Ridge • Lasso • ElasticNet • Decision Tree • Rando
         # Numeric summary
         numeric_cols = self.df.select_dtypes(include=[np.number]).columns[:10]
         summary_stats = self.df[numeric_cols].describe().T.round(2)
+        summary_stats = summary_stats.reset_index().rename(columns={'index': 'Feature'})
         
         return summary, missing_df, fig_missing, summary_stats
     
@@ -174,7 +175,8 @@ Linear Regression • Ridge • Lasso • ElasticNet • Decision Tree • Rando
         summary_stats = self.df[numeric_cols].describe().T
         summary_stats['skewness'] = self.df[numeric_cols].skew()
         summary_stats['kurtosis'] = self.df[numeric_cols].kurtosis()
-        eda_results['summary_stats'] = summary_stats.round(2)
+        summary_stats = summary_stats.round(2).reset_index().rename(columns={'index': 'Feature'})
+        eda_results['summary_stats'] = summary_stats
         
         # Missing values analysis
         missing_df = pd.DataFrame({
