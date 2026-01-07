@@ -639,8 +639,8 @@ Central tendency and dispersion for key features
                     mode="number+delta+gauge",
                     value=roi,
                     delta={'reference': 100, 'relative': False, 'suffix': '%'},
-                    title={'text': "ROI (%)", 'font': {'size': 18}},
-                    number={'suffix': "%", 'font': {'size': 40}},
+                    title={'text': "ROI", 'font': {'size': 14}},
+                    number={'suffix': "%", 'font': {'size': 32}},
                     gauge={
                         'axis': {'range': [-100, 500]},
                         'bar': {'color': '#10b981' if roi > 100 else '#f59e0b' if roi > 0 else '#ef4444'},
@@ -661,16 +661,144 @@ Central tendency and dispersion for key features
             )
             
             fig.update_layout(
-                height=450,
+                height=500,
                 showlegend=False,
-                template="plotly_white"
+                template="plotly_white",
+                margin=dict(t=80, b=50, l=50, r=50)
             )
             fig.update_yaxes(title_text="Amount ($)", row=1, col=1)
-            
             return result, fig
         except Exception as e:
             import traceback
             return f"❌ Error: {e}\n\n{traceback.format_exc()}", None
+    
+    def test_performance(self):
+        """Visualize model performance on test set"""
+        if not self.model or self.df is None:
+            return "❌ Model or data not loaded", None
+        
+        try:
+            # Load or create test set
+            from sklearn.model_selection import train_test_split
+            from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
+            
+            # Get features and target
+            feature_cols = self.model['feature_names']
+            available_features = [f for f in feature_cols if f in self.df.columns]
+            
+            # Filter for rows with non-null target
+            df_valid = self.df[self.df['Gross_worldwide'].notna()].copy()
+            
+            if len(df_valid) < 100:
+                return "❌ Not enough valid data for testing", None
+            
+            # Split data (same seed as training)
+            X = df_valid[available_features].fillna(0)
+            y = df_valid['Gross_worldwide']
+            
+            _, X_test, _, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+            
+            # Make predictions
+            y_pred = self.model['model'].predict(X_test)
+            
+            # Calculate metrics
+            r2 = r2_score(y_test, y_pred)
+            mae = mean_absolute_error(y_test, y_pred)
+            rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+            
+            # Create result summary
+            result = f"""
+## 📊 Test Set Performance
+
+| Metric | Value |
+|--------|-------|
+| **R² Score** | {r2:.4f} ({r2*100:.2f}%) |
+| **MAE** | ${mae:,.0f} (${mae/1e6:.1f}M) |
+| **RMSE** | ${rmse:,.0f} (${rmse/1e6:.1f}M) |
+| **Test Samples** | {len(y_test):,} movies |
+
+**Interpretation:**
+- R² = {r2:.4f} means the model explains **{r2*100:.1f}%** of variance in box office revenue
+- On average, predictions are off by **${mae/1e6:.1f}M** (MAE)
+"""
+            
+            # Create visualization
+            fig = make_subplots(
+                rows=1, cols=2,
+                subplot_titles=("Actual vs Predicted", "Prediction Errors"),
+                horizontal_spacing=0.12
+            )
+            
+            # Scatter plot: Actual vs Predicted
+            fig.add_trace(
+                go.Scatter(
+                    x=y_test/1e6,
+                    y=y_pred/1e6,
+                    mode='markers',
+                    marker=dict(
+                        size=6,
+                        color=np.abs(y_test - y_pred)/1e6,
+                        colorscale='Viridis',
+                        showscale=True,
+                        colorbar=dict(title="Error ($M)", x=0.46),
+                        opacity=0.6
+                    ),
+                    text=[f"Actual: ${a/1e6:.1f}M<br>Predicted: ${p/1e6:.1f}M<br>Error: ${abs(a-p)/1e6:.1f}M" 
+                          for a, p in zip(y_test, y_pred)],
+                    hovertemplate='%{text}<extra></extra>',
+                    name='Predictions'
+                ),
+                row=1, col=1
+            )
+            
+            # Perfect prediction line
+            max_val = max(y_test.max(), y_pred.max()) / 1e6
+            fig.add_trace(
+                go.Scatter(
+                    x=[0, max_val],
+                    y=[0, max_val],
+                    mode='lines',
+                    line=dict(color='red', dash='dash', width=2),
+                    name='Perfect Prediction',
+                    hovertemplate='Perfect prediction line<extra></extra>'
+                ),
+                row=1, col=1
+            )
+            
+            # Error distribution histogram
+            errors = (y_pred - y_test) / 1e6
+            fig.add_trace(
+                go.Histogram(
+                    x=errors,
+                    nbinsx=30,
+                    marker_color='#3b82f6',
+                    opacity=0.7,
+                    name='Error Distribution',
+                    hovertemplate='Error: %{x:.1f}M<br>Count: %{y}<extra></extra>'
+                ), row=1, col=2
+            )
+            
+            # Add zero line
+            fig.add_vline(x=0, line_dash="dash", line_color="red", row=1, col=2)
+            
+            fig.update_layout(
+                height=500,
+                showlegend=False,
+                template="plotly_white",
+                title_text=f"Test Set Performance: R² = {r2:.4f}, MAE = ${mae/1e6:.1f}M"
+            )
+            
+            fig.update_xaxes(title_text="Actual Gross ($M)", row=1, col=1)
+            fig.update_yaxes(title_text="Predicted Gross ($M)", row=1, col=1)
+            fig.update_xaxes(title_text="Prediction Error ($M)", row=1, col=2)
+            fig.update_yaxes(title_text="Frequency", row=1, col=2)
+            
+            return result, fig
+            
+        except Exception as e:
+            import traceback
+            return f"❌ Error: {e}\n\n{traceback.format_exc()}", None
+    
     
     # Tab 6: Model Comparison
     def models_tab(self):
@@ -706,7 +834,7 @@ Central tendency and dispersion for key features
         train_r2 = self.comparison['Train_R2'].values
         
         # Gradient colors for bars
-        colors = px.colors.sequential.Viridis[::2]  # Get every other color
+        # colors = px.colors.sequential.Viridis[::2]  # Get every other color
         
         # Bar chart for Test R²
         fig.add_trace(
@@ -1123,7 +1251,25 @@ All visualizations are interactive - zoom, pan, and hover for detailed insights.
                         [pred_output, pred_plot]
                     )
                 
-                # Tab 6: Models
+                # Tab 6: Test Set Performance
+                with gr.Tab("📊 Test Set Performance"):
+                    gr.Markdown("""
+## 🔬 Model Performance on Test Data
+
+Visualize how the model performs on unseen test data with actual vs. predicted comparisons.
+""")
+                    
+                    test_btn = gr.Button("📈 Run Test Set Predictions", variant="primary", size="lg")
+                    test_output = gr.Markdown()
+                    test_plot = gr.Plot()
+                    
+                    test_btn.click(
+                        self.test_performance,
+                        [],
+                        [test_output, test_plot]
+                    )
+                
+                # Tab 7: Models
                 with gr.Tab("🏆 Model Comparison"):
                     summary, comp_df, comp_fig = self.models_tab()
                     gr.Markdown(summary)
@@ -1135,7 +1281,7 @@ All visualizations are interactive - zoom, pan, and hover for detailed insights.
                     if comp_fig is not None:
                         gr.Plot(comp_fig)
                 
-                # Tab 7: Features
+                # Tab 8: Features
                 with gr.Tab("📚 Feature Engineering"):
                     feat_summary, feat_df, feat_fig, feat_dict = self.features_tab()
                     gr.Markdown(feat_summary)
