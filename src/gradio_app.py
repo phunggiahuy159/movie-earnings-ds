@@ -117,12 +117,13 @@ Linear Regression • Ridge • Lasso • ElasticNet • Decision Tree • Rando
 - **Missing Values:** {missing_cells:,} cells
 """
         
-        # Missing values by column
+        # Missing values by column - exclude ListOfCertificate (100% missing)
+        cols_to_include = [col for col in self.df.columns if col != 'ListOfCertificate']
         missing_df = pd.DataFrame({
-            'Column': self.df.columns,
-            'Missing': self.df.isnull().sum().values,
-            'Percentage': (self.df.isnull().sum().values / len(self.df) * 100).round(2)
-        }).sort_values('Missing', ascending=False).head(10)
+            'Column': cols_to_include,
+            'Missing': [self.df[col].isnull().sum() for col in cols_to_include],
+            'Percentage': [(self.df[col].isnull().sum() / len(self.df) * 100) for col in cols_to_include]
+        }).sort_values('Missing', ascending=False).head(10).round(2)
         
         # Visualization: Missing values bar chart
         fig_missing = go.Figure(go.Bar(
