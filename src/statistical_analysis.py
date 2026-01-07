@@ -65,8 +65,8 @@ class StatisticalAnalyzer:
         
         print(summary)
         
-        # Save to CSV
-        summary.to_csv('demo/stats_summary.csv')
+        # Save to CSV with proper index label
+        summary.to_csv('demo/stats_summary.csv', index_label='Feature')
         print("\n✓ Summary statistics saved to demo/stats_summary.csv")
         
         return self
